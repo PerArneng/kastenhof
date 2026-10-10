@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kastenhofsmotet · Trafik</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+        "d3": "https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div id="chips"></div>
+
+  <header id="hud" class="glass">
+    <div class="brand">
+      <div class="title">Kastenhofsmotet</div>
+      <div class="subtitle">E20 · trafiksimulering</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Fordon</span><span class="v" id="st-veh">0</span></div>
+      <div class="stat"><span class="k">Flöde</span><span class="v" id="st-flow">0</span><span class="u">/min</span></div>
+      <div class="stat"><span class="k">Klocka</span><span class="v" id="st-clock">07:30</span></div>
+    </div>
+    <div class="controls">
+      <button id="btn-pause" class="btn" title="Pause (space)">❚❚</button>
+      <div class="seg" id="seg-speed"></div>
+      <div class="seg" id="seg-tod"></div>
+      <button id="btn-debug" class="btn ghost" title="Debug overlay (D)">Debug</button>
+      <button id="btn-ref" class="btn ghost" title="Reference map overlay (R)">Ref</button>
+      <button id="btn-view" class="btn ghost" title="Reset view (V)">⤢</button>
+    </div>
+  </header>
+
+  <aside id="legend" class="glass hidden">
+    <div class="lg-title">Trafikregler i modellen</div>
+    <ul>
+      <li><i class="sw" style="background:#f2c94c"></i>Väjningsplikt (B1) — sidoväg / cirkulationsplats</li>
+      <li><i class="sw" style="background:#56ccf2"></i>Högerregeln — oskyltad korsning</li>
+      <li><i class="sw" style="background:#bb6bd9"></i>Utfartsregeln — pendelparkeringen</li>
+      <li><i class="sw" style="background:#eb5757"></i>Fordon som väntar på lucka</li>
+      <li><i class="sw" style="background:#6fcf97"></i>Fordon som fått klartecken</li>
+    </ul>
+    <div class="lg-note">Motorväg: håll till höger, omkörning endast till vänster, kugghjulsprincipen vid påfart.</div>
+  </aside>
+
+  <div id="loading"><div class="spinner"></div><div>Bygger Kastenhof…</div></div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
