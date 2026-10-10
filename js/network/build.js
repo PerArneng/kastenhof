@@ -66,7 +66,7 @@ export function buildNetwork(def = NETWORK) {
   for (const j of def.junctions) {
     net.junctions[j.id] = {
       id: j.id, type: j.type, c: toM(j.center), legs: [], connectors: [], ring: [],
-      minor: j.minor || [], exitLegs: j.exit || [],
+      minor: j.minor || [], exitLegs: j.exit || [], ban: j.ban || [],
       R: (j.radius || 0) * S, trim: j.type === 'roundabout' ? j.legTrim * S : j.trim,
     };
   }
@@ -210,7 +210,7 @@ export function buildNetwork(def = NETWORK) {
     if (r.from.junction) { const J = net.junctions[r.from.junction]; a = trimS(pl, J.c, J.trim, true); }
     if (r.to.junction) { const J = net.junctions[r.to.junction]; b = trimS(pl, J.c, J.trim, false); }
     const path = addPath(pl.sliceOffset(a, b, 0), {
-      kind: 'ramp', speed: kmh(CONFIG.speed[r.id] || 70), width: W, group: r.group, roadId: r.id, name: r.name,
+      kind: 'ramp', speed: kmh(CONFIG.speed[r.id] || 70), width: W, group: r.group, roadId: r.id, name: r.name, slip: !!r.slip,
     });
     net.ramps[r.id] = path;
     if (startNode) link(startNode, path);
@@ -290,10 +290,12 @@ export function buildNetwork(def = NETWORK) {
         const k = dist(p0, p3) * 0.42;
         const pts = cubicBezier(p0, [p0[0] + t0[0] * k, p0[1] + t0[1] * k], [p3[0] - t3[0] * k, p3[1] - t3[1] * k], p3);
         const turnA = wrapAngle(angleOf(t3[0], t3[1]) - angleOf(t0[0], t0[1]));
+        const turn = turnA > 0.55 ? 'right' : turnA < -0.55 ? 'left' : 'straight';
+        if (Math.abs(turnA) > 2.5 || (J.ban || []).includes(`${A.road}:${turn}`)) continue; // U-turn / banned
         const conn = addPath(pts, {
           kind: 'conn', junction: J.id, speed: Math.min(inL.speed, outL.speed, kmh(CONFIG.speed.connector)),
           width: Math.max(inL.width, outL.width), fromRoad: A.road, toRoad: B.road, fromRole: A.role,
-          turn: turnA > 0.55 ? 'right' : turnA < -0.55 ? 'left' : 'straight', name: B.road,
+          turn, name: B.road,
           inLane: inL.id, outLane: outL.id, approach: angleOf(t0[0], t0[1]),
           legDir: angleOf(-t0[0], -t0[1]),
         });

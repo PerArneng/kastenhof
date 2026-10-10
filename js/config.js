@@ -12,7 +12,7 @@ export const CONFIG = {
   // Posted limits (km/h) by road id: E20 is 100, every other road 50.
   // Ring/connector/parking values are caps; curves usually limit speed more.
   speed: {
-    E20E: 100, E20W: 100, OFFE: 50, ONE: 50, OFFW: 50, ONW: 50,
+    E20E: 100, E20W: 100, OFFE: 50, ONE: 50, OFFW: 50, ONW: 50, SLIP_SW: 40, SLIP_EN: 40,
     HED: 50, HAR: 50, SLV: 50, DAG: 50, KAST: 50, LAG: 50, JUT: 50, PEND: 20,
     ring: 30, connector: 40,
   },

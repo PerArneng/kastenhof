@@ -5,7 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CONFIG } from '../config.js';
 import { Polyline, smoothstep } from '../network/geometry.js';
 import { toM } from '../network/build.js';
-import { LABELS } from '../network/roads.js';
+import { LABELS, NETWORK } from '../network/roads.js';
 
 const Y = { shoulder: 0.03, patch: 0.045, lane: 0.05, conn: 0.052, mark: 0.075, yieldm: 0.08 };
 
@@ -63,7 +63,17 @@ function lineMarks(pl, hAt, offset, width, dash, gap, out, s0 = 0, s1 = pl.len) 
 
 const hOfPath = (p) => (s) => { const f = Math.min(p.n - 1, Math.max(0, s / p.ds)); const i = Math.floor(f); return p.h[i] + (p.h[Math.min(p.n - 1, i + 1)] - p.h[i]) * (f - i); };
 
+function pointInPoly([x, z], poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, zi] = poly[i], [xj, zj] = poly[j];
+    if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
 export function buildRoads(scene, net) {
+  const pavedPolys = (NETWORK.areas || []).filter((A) => A.kind === 'paved').map((A) => A.poly.map(toM));
   const asphalt = [], shoulder = [], marks = [], patch = [], concrete = [], embank = [], apron = [], island = [], splitters = [];
   const paths = net.paths;
 
@@ -103,8 +113,10 @@ export function buildRoads(scene, net) {
   for (const p of paths) {
     if (p.kind !== 'ramp') continue;
     const h = hOfPath(p);
-    lineMarks(p, h, -p.width / 2 + 0.25, 0.2, 0, 0, marks, 20, p.len - 4);
-    lineMarks(p, h, p.width / 2 - 0.25, 0.2, 0, 0, marks, 20, p.len - 4);
+    // slip lanes share the asphalt with the road they turn off; that road's
+    // dashed edge (see paved areas) separates them, so no inner line here
+    if (!p.slip) lineMarks(p, h, -p.width / 2 + 0.25, 0.2, 0, 0, marks, 20, p.len - 4);
+    lineMarks(p, h, p.width / 2 - 0.25, 0.2, 0, 0, marks, p.slip ? 4 : 20, p.len - 4);
     strip(p.points(), p.h, -p.width / 2 - 0.9, p.width / 2 + 0.9, Y.shoulder, shoulder);
     addEmbankment(p.points(), Array.from(p.h), -p.width / 2 - 1.1, p.width / 2 + 1.1, dag, embank, concrete);
   }
@@ -124,7 +136,15 @@ export function buildRoads(scene, net) {
       if (s1 - s0 > 4) lineMarks(cl, h0, 0, 0.12, 3, 9, marks, s0, s1);
       for (const side of [-1, 1]) {
         const edge = new Polyline(cl.sliceOffset(0, cl.len, (s) => side * (W - 0.2 + fl(s))), 1);
-        lineMarks(edge, h0, 0, 0.1, 0, 0, marks);
+        // solid edge line, dashed where a slip lane runs alongside (paved area)
+        let a = 0;
+        const inPaved = (q) => pavedPolys.some((poly) => pointInPoly(edge.point(q), poly));
+        while (a < edge.len) {
+          const pv = inPaved(a);
+          let b = a; while (b < edge.len && inPaved(b) === pv) b += 1;
+          lineMarks(edge, h0, 0, pv ? 0.12 : 0.1, pv ? 3 : 0, pv ? 3 : 0, marks, a, Math.min(b, edge.len));
+          a = b;
+        }
       }
     }
   }
@@ -160,6 +180,30 @@ export function buildRoads(scene, net) {
         }
         if (outC) splitterIsland(J, inC, outC, paths, splitters);
       }
+    }
+  }
+
+  // ---- paved areas and painted islands (spärrområden)
+  for (const A of NETWORK.areas || []) {
+    const pts = A.poly.map(toM);
+    if (A.kind === 'paved') {
+      const g = new THREE.ShapeGeometry(new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z))));
+      g.rotateX(-Math.PI / 2); g.translate(0, Y.patch, 0); patch.push(g);
+      continue;
+    }
+    // white border, then diagonal hatching clipped to the (convex) polygon
+    const ring = [...pts, pts[0]], inset = 0.2;
+    for (let i = 0; i < pts.length; i++) strip([ring[i], ring[i + 1]], null, -inset, inset, Y.mark, marks);
+    const cx = pts.reduce((a, p) => a + p[0], 0) / pts.length, cz = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+    const d = [Math.SQRT1_2, Math.SQRT1_2], n = [-d[1], d[0]];
+    for (let o = -12; o <= 12; o += 1.2) {
+      const hits = [];
+      for (let i = 0; i < pts.length; i++) {
+        const a = ring[i], b = ring[i + 1];
+        const fa = (a[0] - cx) * n[0] + (a[1] - cz) * n[1] - o, fb = (b[0] - cx) * n[0] + (b[1] - cz) * n[1] - o;
+        if ((fa < 0) !== (fb < 0)) { const t = fa / (fa - fb); hits.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); }
+      }
+      if (hits.length === 2 && Math.hypot(hits[1][0] - hits[0][0], hits[1][1] - hits[0][1]) > 0.4) strip(hits, null, -0.11, 0.11, Y.mark, marks);
     }
   }
 

@@ -32,25 +32,32 @@ export const NETWORK = {
     // on-ramp from there back to E20. Both meet Dageborgsleden at grade.
     { id: 'OFFW', name: 'Avfart 86', pts: TRACES.OFFW, from: { carriageway: 'E20W' }, to: { junction: 'J_CW' }, group: 'OFFW' },
     { id: 'ONW', name: 'Påfart 86', pts: TRACES.ONW, from: { junction: 'J_CW' }, to: { carriageway: 'E20W' }, group: 'ONW' },
+    // Channelised right turns at Dageborgsleden / Södra Långvägen (satellite):
+    // southbound Dageborgsleden → westbound Södra Långvägen, passing the
+    // commuter-lot access, and westbound Södra Långvägen → northbound Dageborgsleden.
+    { id: 'SLIP_SW', name: 'Södra Långvägen', pts: [[998, 688], [994, 698], [991, 708], [989, 718], [985, 728], [978, 735], [966, 739], [950, 740], [934, 742], [921, 746], [911, 752]],
+      from: { junction: 'J_DN' }, to: { junction: 'J_P' }, slip: true },
+    { id: 'SLIP_EN', name: 'Dageborgsleden', pts: [[1066, 756], [1052, 750], [1040, 746], [1029, 742], [1021, 736], [1016, 728], [1013, 718], [1010, 706], [1005, 696], [998, 688]],
+      from: { junction: 'J_SE' }, to: { junction: 'J_DN' }, slip: true },
   ],
 
   // Two-way roads (one lane each direction).
   roads: [
     { id: 'SLV', name: 'Södra Långvägen', kind: 'main', pts: TRACES.SLV,
-      start: { junction: 'RB' }, end: { boundary: { id: 'SLV', label: 'Södra Långvägen' } }, via: ['J_DS', 'J_P', 'J_LS'] },
+      start: { junction: 'RB' }, end: { boundary: { id: 'SLV', label: 'Södra Långvägen' } }, via: ['J_SE', 'J_DS', 'J_P', 'J_LS'] },
     { id: 'HED', name: 'Hedeforsvägen', kind: 'main', pts: TRACES.HED,
       start: { junction: 'RB' }, end: { boundary: { id: 'HED', label: 'Hedeforsvägen' } } },
     { id: 'HAR', name: 'Härskogsvägen', kind: 'main', pts: TRACES.HAR,
       start: { junction: 'RB' }, end: { boundary: { id: 'HAR', label: 'Härskogsvägen' } } },
     { id: 'DAG', name: 'Dageborgsleden', kind: 'main', pts: TRACES.DAG,
-      start: { boundary: { id: 'DAG', label: 'Dageborgsleden' } }, end: { junction: 'J_DS' }, via: ['J_KD', 'J_CW'] },
+      start: { boundary: { id: 'DAG', label: 'Dageborgsleden' } }, end: { junction: 'J_DS' }, via: ['J_KD', 'J_CW', 'J_DN'] },
     { id: 'KAST', name: 'Kastenhofsvägen', kind: 'local', pts: TRACES.KAST,
       start: { boundary: { id: 'KAST', label: 'Kastenhofsvägen' } }, end: { junction: 'J_KD' } },
     { id: 'LAG', name: 'Laggarns väg', kind: 'local', pts: TRACES.LAG,
       start: { junction: 'J_LS' }, end: { boundary: { id: 'LAG', label: 'Laggarns väg' } }, via: ['J_JL'] },
     { id: 'JUT', name: 'Jutagårdsvägen', kind: 'local', pts: TRACES.JUT,
       start: { junction: 'J_JL' }, end: { boundary: { id: 'JUT', label: 'Jutagårdsvägen' } } },
-    { id: 'PEND', name: 'Pendelparkering', kind: 'local', pts: [[911, 750], [911, 733], [913, 720], [925, 707], [940, 700]],
+    { id: 'PEND', name: 'Pendelparkering', kind: 'local', pts: [[911, 752], [912, 740], [914, 728], [918, 717], [926, 709], [938, 704], [948, 702]],
       start: { junction: 'J_P' }, end: { parking: { id: 'P', label: 'Pendelparkering' } } },
   ],
 
@@ -58,18 +65,36 @@ export const NETWORK = {
   //   priority  – väjningsplikt (B1) for the `minor` legs, utfartsregeln for `exit` legs
   //   right     – unsigned junction: högerregeln (yield to traffic from the right)
   //   roundabout– cirkulationsplats, väjningsplikt on every entry
+  // `ban` lists movements that don't exist as `fromRoad:turn` (U-turns are never built).
   junctions: [
     { id: 'RB', type: 'roundabout', center: [1310, 645], radius: 38, legTrim: 58 },
-    { id: 'J_DS', type: 'priority', center: [1005, 748], minor: ['DAG'], trim: 9 },
+    // Dageborgsleden / Södra Långvägen: right turns use the slips, so only the
+    // left turns (and Södra Långvägen through) cross the main junction.
+    { id: 'J_DS', type: 'priority', center: [1005, 748], minor: ['DAG'], trim: 9, ban: ['DAG:right', 'SLV:right'] },
+    { id: 'J_DN', type: 'priority', center: [998, 690], minor: ['SLIP_EN'], trim: 8, ban: ['SLIP_EN:left', 'DAG:left'] },
+    { id: 'J_SE', type: 'priority', center: [1066, 756], trim: 8 },
     { id: 'J_CW', type: 'priority', center: [872, 479], minor: ['OFFW', 'ONW'], trim: 9 },
     { id: 'J_KD', type: 'priority', center: [783, 403], minor: ['KAST'], trim: 8 },
-    { id: 'J_P', type: 'priority', center: [911, 750], exit: ['PEND'], trim: 7 },
+    // The slip lane merges into Södra Långvägen where the commuter-lot road joins.
+    { id: 'J_P', type: 'priority', center: [911, 752], minor: ['SLIP_SW'], exit: ['PEND'], trim: 8 },
     { id: 'J_LS', type: 'priority', center: [655, 866], minor: ['LAG'], trim: 8 },
     { id: 'J_JL', type: 'right', center: [658, 900], trim: 6 },
   ],
 
+  // Extra surfacing (map px). `paved`: asphalt between lanes, e.g. where the
+  // slips run alongside Dageborgsleden; `painted`: spärrområde (white border
+  // and diagonal hatching) instead of a raised island.
+  areas: [
+    { kind: 'paved', poly: [[998, 690], [1000, 700], [1002, 712], [1003, 724], [1004, 736], [1005, 748], [987, 748], [963, 748], [945, 749],
+      [950, 740], [966, 739], [978, 735], [985, 728], [989, 718], [991, 708], [994, 698]] },
+    { kind: 'paved', poly: [[998, 690], [1000, 700], [1002, 712], [1003, 724], [1004, 736], [1005, 748], [1023, 752], [1047, 754], [1060, 756],
+      [1052, 750], [1040, 746], [1029, 742], [1021, 736], [1016, 728], [1013, 718], [1010, 706], [1005, 696]] },
+    { kind: 'painted', poly: [[988, 742], [997, 742], [997, 726]] },
+    { kind: 'painted', poly: [[1011, 744], [1011, 733], [1022, 744]] },
+  ],
+
   parking: [
-    { id: 'P', center: [940, 700], size: [44, 32], angle: -0.45 },
+    { id: 'P', center: [945, 703], size: [46, 32], angle: -0.45 },
     // Large gravel lot north of the roundabout, between the on-ramp and Hedeforsvägen
     // (seen on the satellite image; scenery only, no traffic).
     { id: 'P2', center: [1295, 535], size: [128, 40], angle: 1.242 },
