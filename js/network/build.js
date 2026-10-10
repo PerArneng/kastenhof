@@ -5,7 +5,7 @@ import { CONFIG, kmh } from '../config.js';
 import { NETWORK } from './roads.js';
 import {
   Polyline, catmullRom, cubicBezier, intersectPolylines, dist, smoothstep,
-  wrapAngle, angleOf, convexHull,
+  wrapAngle, angleOf,
 } from './geometry.js';
 
 const S = CONFIG.scale;
@@ -211,7 +211,6 @@ export function buildNetwork(def = NETWORK) {
     if (r.to.junction) { const J = net.junctions[r.to.junction]; b = trimS(pl, J.c, J.trim, false); }
     const path = addPath(pl.sliceOffset(a, b, 0), {
       kind: 'ramp', speed: kmh(CONFIG.speed[r.id] || 70), width: W, group: r.group, roadId: r.id, name: r.name,
-      motorway: r.id === 'CONN',
     });
     net.ramps[r.id] = path;
     if (startNode) link(startNode, path);
@@ -236,10 +235,18 @@ export function buildNetwork(def = NETWORK) {
       if (A.end.junction) { const J = net.junctions[A.end.junction]; a = Math.max(a, trimSRange(raw, J.c, J.trim, a, b, true)); }
       if (B.end.junction) { const J = net.junctions[B.end.junction]; b = Math.min(b, trimSRange(raw, J.c, J.trim, a, b, false)); }
       if (b - a < 2) continue;
-      const fwd = addPath(raw.sliceOffset(a, b, W / 2), { kind: 'lane', speed, width: W, roadId: r.id, name: r.name, roadKind: r.kind });
-      const bwd = addPath(raw.sliceOffset(a, b, -W / 2).reverse(), { kind: 'lane', speed, width: W, roadId: r.id, name: r.name, roadKind: r.kind });
+      // Approaching a roundabout the two directions fan apart around a splitter island.
+      const FL = CONFIG.roundaboutFlare;
+      const isRB = (e) => e.junction && net.junctions[e.junction].type === 'roundabout';
+      const fA = isRB(A.end), fB = isRB(B.end);
+      const flare = (s) => FL.width * Math.max(fA ? smoothstep(1 - (s - a) / FL.length) : 0, fB ? smoothstep(1 - (b - s) / FL.length) : 0);
+      const fwd = addPath(raw.sliceOffset(a, b, (s) => W / 2 + flare(s)), { kind: 'lane', speed, width: W, roadId: r.id, name: r.name, roadKind: r.kind });
+      const bwd = addPath(raw.sliceOffset(a, b, (s) => -W / 2 - flare(s)).reverse(), { kind: 'lane', speed, width: W, roadId: r.id, name: r.name, roadKind: r.kind });
       fwd.twin = bwd.id; bwd.twin = fwd.id;
-      net.pieces.push({ road: r.id, name: r.name, kind: r.kind, center: raw.sliceOffset(a, b, 0), width: W * 2, fwd: fwd.id, bwd: bwd.id });
+      net.pieces.push({
+        road: r.id, name: r.name, kind: r.kind, center: raw.sliceOffset(a, b, 0), width: W * 2, fwd: fwd.id, bwd: bwd.id,
+        flare: (t) => flare(a + t), // extra half-width at arc length t along `center`
+      });
       const ends = [[A.end, fwd, bwd], [B.end, bwd, fwd]]; // [endpoint, lane leaving it, lane arriving at it]
       for (const [e, outLane, inLane] of ends) {
         if (e.junction) addLeg(e.junction, { road: r.id, inLane, outLane, kind: r.kind });
@@ -378,8 +385,9 @@ export function buildNetwork(def = NETWORK) {
         const L = a.leg.inLane;
         const p0 = [L.x[L.n - 1], L.z[L.n - 1]], t0 = L.tangent(L.len);
         const p3 = ringPt(a.th), t3 = ringTan(a.th);
-        const k2 = dist(p0, p3) * 0.45;
-        const conn = addPath(cubicBezier(p0, [p0[0] + t0[0] * k2, p0[1] + t0[1] * k2], [p3[0] - t3[0] * k2, p3[1] - t3[1] * k2], p3), {
+        // short lead-in so entry and exit fan apart early, leaving room for the splitter island
+        const k1 = dist(p0, p3) * 0.3, k2 = dist(p0, p3) * 0.5;
+        const conn = addPath(cubicBezier(p0, [p0[0] + t0[0] * k1, p0[1] + t0[1] * k1], [p3[0] - t3[0] * k2, p3[1] - t3[1] * k2], p3), {
           kind: 'conn', junction: J.id, speed: kmh(35), width: L.width + 0.6, fromRoad: a.leg.road, fromRole: 'minor', turn: 'right',
           inLane: L.id, outLane: segOut.id, entry: true, gapType: 'roundabout', name: a.leg.road,
         });
@@ -393,8 +401,8 @@ export function buildNetwork(def = NETWORK) {
         const L = a.leg.outLane;
         const p0 = ringPt(a.th), t0 = ringTan(a.th);
         const p3 = [L.x[0], L.z[0]], t3 = L.tangent(0);
-        const k2 = dist(p0, p3) * 0.45;
-        const conn = addPath(cubicBezier(p0, [p0[0] + t0[0] * k2, p0[1] + t0[1] * k2], [p3[0] - t3[0] * k2, p3[1] - t3[1] * k2], p3), {
+        const k1 = dist(p0, p3) * 0.3, k2 = dist(p0, p3) * 0.5;
+        const conn = addPath(cubicBezier(p0, [p0[0] + t0[0] * k2, p0[1] + t0[1] * k2], [p3[0] - t3[0] * k1, p3[1] - t3[1] * k1], p3), {
           kind: 'conn', junction: J.id, speed: kmh(35), width: L.width + 0.6, toRoad: a.leg.road, turn: 'right',
           inLane: segIn.id, outLane: L.id, exitConn: true, name: a.leg.road,
         });
@@ -448,17 +456,26 @@ export function buildNetwork(def = NETWORK) {
     e.dir = p.tangent(s);
   }
 
-  // Junction surface patches (for rendering)
+  // Junction surface (for rendering): one asphalt arm per leg, from the leg's
+  // end to the centre, so a crossing reads as crossing roads rather than a
+  // blob. Major roads passing through also keep their centre line.
   for (const J of Object.values(net.junctions)) {
     if (J.type === 'roundabout') continue;
-    const pts = [];
-    for (const leg of J.legs) for (const L of [leg.inLane, leg.outLane]) {
-      if (!L) continue;
-      const s = L === leg.inLane ? L.len : 0;
-      const [x, z] = L.point(s), [nx, nz] = L.normal(s), w = L.width / 2 + 0.6;
-      pts.push([x + nx * w, z + nz * w], [x - nx * w, z - nz * w]);
+    J.arms = [];
+    for (const leg of J.legs) {
+      const ends = [];
+      if (leg.inLane) ends.push(leg.inLane.point(leg.inLane.len));
+      if (leg.outLane) ends.push(leg.outLane.point(0));
+      const p = [ends.reduce((a, q) => a + q[0], 0) / ends.length, ends.reduce((a, q) => a + q[1], 0) / ends.length];
+      const width = (leg.inLane || leg.outLane).width * (leg.inLane && leg.outLane ? 2 : 1) + 1.2;
+      J.arms.push({ pts: [p, J.c], width });
     }
-    J.patch = convexHull(pts);
+    J.through = [];
+    for (const r of def.roads) {
+      if (!(r.via || []).includes(J.id) || J.minor.includes(r.id) || J.type === 'right') continue;
+      const raw = net.rawRoads[r.id], s = raw.nearest(...J.c).s;
+      J.through.push(raw.sliceOffset(Math.max(0, s - J.trim - 0.5), Math.min(raw.len, s + J.trim + 0.5), 0));
+    }
   }
 
   return net;

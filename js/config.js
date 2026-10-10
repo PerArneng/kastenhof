@@ -12,15 +12,20 @@ export const CONFIG = {
   // Posted limits (km/h) by road id: E20 is 100, every other road 50.
   // Ring/connector/parking values are caps; curves usually limit speed more.
   speed: {
-    E20E: 100, E20W: 100, CONN: 100, OFFE: 50, ONE: 50,
+    E20E: 100, E20W: 100, OFFE: 50, ONE: 50, OFFW: 50, ONW: 50,
     HED: 50, HAR: 50, SLV: 50, DAG: 50, KAST: 50, LAG: 50, JUT: 50, PEND: 20,
     ring: 30, connector: 40,
   },
 
+  // Satellite footprint (tools/satellite.py): `bounds` is the map-pixel box that
+  // references/satellite-map.webp covers. Roads inside it were traced from the photo.
+  satellite: { bounds: [570, 325, 1440, 850] },
+
+  roundaboutFlare: { width: 2.4, length: 20 }, // lanes part around splitter islands (m)
   extendBeyondEdge: 90,     // roads continue this far outside the map so cars don't pop in
   accelLaneLength: 210,     // parallel acceleration lane at on-ramps (m)
   taperLength: 60,
-  bridge: { height: 6.5, halfLength: 140 }, // E20 passes over Dageborgsleden
+  bridge: { height: 6.5, halfLength: 95 }, // E20 passes over Dageborgsleden
 
   // Driver model (Intelligent Driver Model) – per-vehicle values are jittered.
   idm: {
@@ -52,21 +57,21 @@ export const CONFIG = {
   // Origin → destination weights. Unreachable pairs are dropped automatically.
   od: {
     E20E: { E20E: 86, HED: 5, HAR: 3, SLV: 2, DAG: 2, P: 1, LAG: 0.5, JUT: 0.5 },
-    E20W: { E20W: 100 },
-    SLV:  { E20E: 30, HED: 18, HAR: 12, DAG: 14, SLV: 0, KAST: 3, P: 6, LAG: 6, JUT: 4 },
-    DAG:  { E20E: 30, SLV: 30, HED: 14, HAR: 8, KAST: 5, P: 6, LAG: 4, JUT: 3 },
-    KAST: { DAG: 35, SLV: 30, E20E: 15, HED: 10, HAR: 5, P: 5 },
-    HED:  { E20E: 35, SLV: 30, DAG: 14, HAR: 8, P: 6, LAG: 4, JUT: 3 },
-    HAR:  { E20E: 35, SLV: 28, HED: 12, DAG: 12, P: 5, LAG: 4, JUT: 4 },
-    LAG:  { SLV: 40, E20E: 25, HED: 12, DAG: 10, HAR: 6, JUT: 7 },
-    JUT:  { SLV: 35, E20E: 25, HED: 12, DAG: 10, HAR: 6, LAG: 12 },
-    P:    { SLV: 40, E20E: 25, HED: 15, DAG: 12, HAR: 8 },
+    E20W: { E20W: 90, DAG: 3, SLV: 3, KAST: 1, P: 1, LAG: 1, JUT: 1 },
+    SLV:  { E20W: 15, E20E: 30, HED: 18, HAR: 12, DAG: 14, SLV: 0, KAST: 3, P: 6, LAG: 6, JUT: 4 },
+    DAG:  { E20W: 15, E20E: 30, SLV: 30, HED: 14, HAR: 8, KAST: 5, P: 6, LAG: 4, JUT: 3 },
+    KAST: { E20W: 15, DAG: 35, SLV: 30, E20E: 15, HED: 10, HAR: 5, P: 5 },
+    HED:  { E20W: 15, E20E: 35, SLV: 30, DAG: 14, HAR: 8, P: 6, LAG: 4, JUT: 3 },
+    HAR:  { E20W: 15, E20E: 35, SLV: 28, HED: 12, DAG: 12, P: 5, LAG: 4, JUT: 4 },
+    LAG:  { E20W: 15, SLV: 40, E20E: 25, HED: 12, DAG: 10, HAR: 6, JUT: 7 },
+    JUT:  { E20W: 15, SLV: 35, E20E: 25, HED: 12, DAG: 10, HAR: 6, LAG: 12 },
+    P:    { E20W: 15, SLV: 40, E20E: 25, HED: 15, DAG: 12, HAR: 8 },
   },
 
   routing: {
     noise: 0.18,            // per-driver lognormal perception noise on link times
     laneChangeCost: 3,      // s
-    penalty: { CONN: 22 },  // most westbound traffic stays on the main carriageway
+    penalty: { OFFW: 30 },  // through traffic stays on E20 instead of crossing Dageborgsleden
   },
 
   sim: { dt: 1 / 30, maxVehicles: 900, maxQueue: 60 },

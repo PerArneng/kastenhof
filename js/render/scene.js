@@ -9,18 +9,20 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { MAP_HALF } from '../network/build.js';
 
+export const BLOCK_DEPTH = 34; // metres of soil under the diorama surface
+
 export const TOD = {
   day: {
     label: 'Dag', sun: [-0.5, 0.78, 0.62], sunColor: 0xfff3e0, sunI: 3.1, hemiSky: 0xcfe6ff, hemiGround: 0x5c7a4a, hemiI: 0.45,
-    fog: 0xc9dbe6, exposure: 0.95, turbidity: 5, rayleigh: 1.2, bloom: [0.12, 0.4, 4.0], lights: 0, envI: 0.35,
+    fog: 0xc9dbe6, backdrop: ['#e9f1f4', '#bcd2dc', '#93aebb'], exposure: 0.95, turbidity: 5, rayleigh: 1.2, bloom: [0.12, 0.4, 4.0], lights: 0, envI: 0.35,
   },
   golden: {
     label: 'Kväll', sun: [-0.92, 0.13, 0.36], sunColor: 0xffb46b, sunI: 3.4, hemiSky: 0xffd2a8, hemiGround: 0x3e4a3a, hemiI: 0.55,
-    fog: 0xe8b98f, exposure: 0.85, turbidity: 9, rayleigh: 2.6, bloom: [0.35, 0.5, 1.6], lights: 0.6, envI: 0.55,
+    fog: 0xe8b98f, backdrop: ['#f6dcc0', '#d9a98a', '#6f5a5c'], exposure: 0.85, turbidity: 9, rayleigh: 2.6, bloom: [0.35, 0.5, 1.6], lights: 0.6, envI: 0.55,
   },
   night: {
     label: 'Natt', sun: [0.35, 0.55, -0.55], sunColor: 0x9db4e0, sunI: 0.5, hemiSky: 0x34476b, hemiGround: 0x10161a, hemiI: 0.4,
-    fog: 0x0c1420, exposure: 1.0, turbidity: 1, rayleigh: 0.2, bloom: [0.95, 0.55, 0.85], lights: 1, envI: 0.12, night: true,
+    fog: 0x0c1420, backdrop: ['#1b2738', '#0d1522', '#05080d'], exposure: 1.0, turbidity: 1, rayleigh: 0.2, bloom: [0.95, 0.55, 0.85], lights: 1, envI: 0.12, night: true,
   },
 };
 
@@ -33,28 +35,41 @@ export function createScene(canvas) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+  // The map is a diorama: a block of land floating in front of a soft
+  // backdrop. Everything is clipped at the block edges, so roads, cars and
+  // trees that run past the edge are cut cleanly.
+  const pad = 0.02;
+  renderer.clippingPlanes = [
+    new THREE.Plane(new THREE.Vector3(-1, 0, 0), MAP_HALF[0] + pad), new THREE.Plane(new THREE.Vector3(1, 0, 0), MAP_HALF[0] + pad),
+    new THREE.Plane(new THREE.Vector3(0, 0, -1), MAP_HALF[1] + pad), new THREE.Plane(new THREE.Vector3(0, 0, 1), MAP_HALF[1] + pad),
+  ];
+
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(34, window.innerWidth / window.innerHeight, 2, 9000);
+  // Narrow field of view: close to isometric, but still perspective so
+  // zooming in on a single junction feels natural.
+  const camera = new THREE.PerspectiveCamera(24, window.innerWidth / window.innerHeight, 1, 12000);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  controls.dampingFactor = 0.07;
-  controls.maxPolarAngle = 1.38;
-  controls.minDistance = 22;
-  controls.maxDistance = 2200;
+  controls.dampingFactor = 0.08;
+  controls.maxPolarAngle = 1.32;
+  controls.minDistance = 12;
+  controls.maxDistance = 4200;
   controls.screenSpacePanning = false;
-  controls.zoomSpeed = 1.1;
+  controls.zoomToCursor = true; // scroll zooms towards the point under the mouse
+  controls.zoomSpeed = 1.2;
+  controls.panSpeed = 1.1;
   controls.addEventListener('change', () => {
     const t = controls.target;
-    t.x = THREE.MathUtils.clamp(t.x, -MAP_HALF[0] * 1.15, MAP_HALF[0] * 1.15);
-    t.z = THREE.MathUtils.clamp(t.z, -MAP_HALF[1] * 1.15, MAP_HALF[1] * 1.15);
+    t.x = THREE.MathUtils.clamp(t.x, -MAP_HALF[0], MAP_HALF[0]);
+    t.z = THREE.MathUtils.clamp(t.z, -MAP_HALF[1], MAP_HALF[1]);
     t.y = 0;
   });
 
-  // Sky
+  // Sky: only used to light the scene (environment map); the visible
+  // background is a soft gradient behind the diorama.
   const sky = new Sky();
   sky.scale.setScalar(8000);
-  scene.add(sky);
   const pmrem = new THREE.PMREMGenerator(renderer);
   let envRT = null;
 
@@ -72,7 +87,7 @@ export function createScene(canvas) {
   sun.shadow.normalBias = 0.45;
   scene.add(sun, sun.target);
 
-  scene.fog = new THREE.Fog(0xc9dbe6, 2200, 6500);
+  scene.fog = new THREE.Fog(0xc9dbe6, 5000, 12000);
 
   // Post
   const composer = new EffectComposer(renderer);
@@ -108,8 +123,8 @@ export function createScene(canvas) {
     u.mieCoefficient.value = 0.005; u.mieDirectionalG.value = 0.8;
     const skyDir = p.night ? new THREE.Vector3(0.2, -0.3, -1).normalize() : dir;
     u.sunPosition.value.copy(skyDir);
-    sky.visible = !p.night;
-    scene.background = p.night ? new THREE.Color(0x05080d) : null;
+    if (scene.background) scene.background.dispose();
+    scene.background = backdrop(p.backdrop);
     // environment reflections from the sky
     const envScene = new THREE.Scene();
     if (p.night) envScene.background = new THREE.Color(0x0a1220);
@@ -122,12 +137,24 @@ export function createScene(canvas) {
     bloom.strength = p.bloom[0]; bloom.radius = p.bloom[1]; bloom.threshold = p.bloom[2];
   }
 
+  // Vertical gradient backdrop behind the block.
+  function backdrop([top, mid, bottom]) {
+    const cv = document.createElement('canvas'); cv.width = 16; cv.height = 512;
+    const ctx = cv.getContext('2d');
+    const g = ctx.createLinearGradient(0, 0, 0, 512);
+    g.addColorStop(0, top); g.addColorStop(0.55, mid); g.addColorStop(1, bottom);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 16, 512);
+    const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+
   function fitView(animate = false) {
-    // Frame the whole map at a ~40° tilt so it fills the viewport.
-    const target = new THREE.Vector3(0, 0, 12);
-    const polar = 0.66, az = 0;
+    // Frame the whole block from the south-west at an isometric-like angle.
+    const target = new THREE.Vector3(0, 0, 0);
+    const polar = 0.86, az = -0.42;
     let lo = 100, hi = 4000;
-    const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => new THREE.Vector3(a * MAP_HALF[0], 0, b * MAP_HALF[1]));
+    const corners = [];
+    for (const y of [0, -BLOCK_DEPTH]) for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) corners.push(new THREE.Vector3(a * MAP_HALF[0], y, b * MAP_HALF[1]));
     const tmp = new THREE.PerspectiveCamera(camera.fov, camera.aspect, 1, 10000);
     for (let i = 0; i < 40; i++) {
       const d = (lo + hi) / 2;
@@ -135,10 +162,10 @@ export function createScene(canvas) {
       tmp.lookAt(target); tmp.updateMatrixWorld(); tmp.updateProjectionMatrix();
       let m = 0;
       for (const c of corners) { const p = c.clone().project(tmp); m = Math.max(m, Math.abs(p.x), Math.abs(p.y)); }
-      if (m > 0.98) lo = d; else hi = d;
+      if (m > 0.9) lo = d; else hi = d;
     }
-    const d = hi * 0.93; // slight zoom so the map edges reach the screen edges
-    const pos = new THREE.Vector3(target.x, d * Math.cos(polar), target.z + d * Math.sin(polar));
+    const d = hi;
+    const pos = new THREE.Vector3(target.x + d * Math.sin(polar) * Math.sin(az), target.y + d * Math.cos(polar), target.z + d * Math.sin(polar) * Math.cos(az));
     if (!animate) { camera.position.copy(pos); controls.target.copy(target); controls.update(); return; }
     const p0 = camera.position.clone(), t0 = controls.target.clone();
     const start = performance.now();

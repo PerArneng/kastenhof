@@ -6,6 +6,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CONFIG } from '../config.js';
 import { MAP_HALF, toM } from '../network/build.js';
 import { LABELS } from '../network/roads.js';
+import { BLOCK_DEPTH } from './scene.js';
 
 const GW = 1000, GH = 620; // classification grid: 1 cell ≈ 1 m
 const C = { GREEN: 0, URBAN: 1, WATER: 2, ROAD: 3, MOTOR: 4 };
@@ -19,7 +20,26 @@ function vnoise(x, y) {
   return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
 export function fbm(x, y, oct = 4) { let s = 0, a = 0.5, f = 1; for (let i = 0; i < oct; i++) { s += a * vnoise(x * f, y * f); f *= 2.03; a *= 0.5; } return s / (1 - Math.pow(0.5, oct)); }
-const forestness = (x, z) => fbm(x / 140 + 11.3, z / 140 - 4.1, 4);
+const noiseForest = (x, z) => fbm(x / 140 + 11.3, z / 140 - 4.1, 4);
+let forestness = noiseForest;
+
+// Land cover derived from the satellite image (tools/satellite.py): R = forest,
+// G = how much the satellite covers this spot, B = ground brightness.
+function readLandcover(img) {
+  const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  const d = ctx.getImageData(0, 0, img.width, img.height).data;
+  const W = img.width, H = img.height;
+  const sample = (x, z, ch) => { // world metres, bilinear
+    const fx = (x / (MAP_HALF[0] * 2) + 0.5) * W - 0.5, fz = (z / (MAP_HALF[1] * 2) + 0.5) * H - 0.5;
+    const x0 = Math.max(0, Math.min(W - 2, Math.floor(fx))), z0 = Math.max(0, Math.min(H - 2, Math.floor(fz)));
+    const tx = Math.max(0, Math.min(1, fx - x0)), tz = Math.max(0, Math.min(1, fz - z0));
+    const v = (xx, zz) => d[((zz * W) + xx) * 4 + ch] / 255;
+    return (v(x0, z0) * (1 - tx) + v(x0 + 1, z0) * tx) * (1 - tz) + (v(x0, z0 + 1) * (1 - tx) + v(x0 + 1, z0 + 1) * tx) * tz;
+  };
+  return { forest: (x, z) => sample(x, z, 0), cover: (x, z) => sample(x, z, 1), bright: (x, z) => sample(x, z, 2) };
+}
 
 function classify(img) {
   const cv = document.createElement('canvas'); cv.width = GW; cv.height = GH;
@@ -62,9 +82,15 @@ function classify(img) {
   return out;
 }
 
-export function buildTerrain(scene, net, refImage) {
-  const S = CONFIG.scale;
+export function buildTerrain(scene, net, refImage, { landcover, satellite } = {}) {
   const cls = classify(refImage);
+  // Inside the satellite footprint, forests follow the real tree cover; the
+  // noise field fills in the rest of the map.
+  const lc = landcover ? readLandcover(landcover) : null;
+  forestness = lc ? (x, z) => {
+    const c = lc.cover(x, z), n = noiseForest(x, z);
+    return c <= 0 ? n : n + (0.36 + lc.forest(x, z) * 0.34 - n) * c;
+  } : noiseForest;
   const at = (x, z) => { // world metres → class
     const gx = Math.floor((x / (MAP_HALF[0] * 2) + 0.5) * GW), gz = Math.floor((z / (MAP_HALF[1] * 2) + 0.5) * GH);
     if (gx < 0 || gz < 0 || gx >= GW || gz >= GH) return -1;
@@ -98,7 +124,9 @@ export function buildTerrain(scene, net, refImage) {
   const mixc = (a, b, t, o) => { t = t < 0 ? 0 : t > 1 ? 1 : t; o[0] = a[0] + (b[0] - a[0]) * t; o[1] = a[1] + (b[1] - a[1]) * t; o[2] = a[2] + (b[2] - a[2]) * t; return o; };
   const tmpA = [0, 0, 0], tmpB = [0, 0, 0], tmpG = [0, 0, 0], tmpH = [0, 0, 0];
   const greenAt = (wx, wz, f, out) => {
-    const base = mixc(meadow, field, (vnoise(wx / 70 - 3, wz / 70 + 9) - 0.45) * 2.6, tmpH);
+    let t = (vnoise(wx / 70 - 3, wz / 70 + 9) - 0.45) * 2.6;
+    if (lc) { const c = lc.cover(wx, wz); if (c > 0) t += ((lc.bright(wx, wz) - 0.42) * 3.2 - t) * c; }
+    const base = mixc(meadow, field, t, tmpH);
     return mixc(base, forestFloor, (f - 0.48) * 6, out);
   };
   for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {
@@ -116,11 +144,7 @@ export function buildTerrain(scene, net, refImage) {
       if (c === C.ROAD && !nearRoad(wx, wz, 7)) col = gravel;
     }
     const k = 0.9 + n * 0.2 + fine;
-    // feather the outer border into the surrounding ground colour
-    const edge = Math.min(x, y, TW - 1 - x, TH - 1 - y) / 60;
-    const e = Math.min(1, edge);
     const i = (y * TW + x) * 4;
-    if (e < 1) { const g = greenAt(wx, wz, forestness(wx, wz), tmpG); col = mixc(g, col, e, tmpA); }
     img.data[i] = col[0] * k;
     img.data[i + 1] = col[1] * k;
     img.data[i + 2] = col[2] * k;
@@ -152,23 +176,19 @@ export function buildTerrain(scene, net, refImage) {
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // surrounding land: same palette, lower resolution, so the map edge disappears
-  const OW = 1024, OSZ = 4400;
-  const sv = document.createElement('canvas'); sv.width = sv.height = OW;
-  const sctx = sv.getContext('2d'); const sd = sctx.createImageData(OW, OW);
-  for (let y = 0; y < OW; y++) for (let x = 0; x < OW; x++) {
-    const wx = (x / OW - 0.5) * OSZ, wz = (y / OW - 0.5) * OSZ;
-    const g = greenAt(wx, wz, forestness(wx, wz), tmpG);
-    const n = 0.92 + vnoise(wx / 9, wz / 9) * 0.14, i = (y * OW + x) * 4;
-    sd.data[i] = g[0] * n; sd.data[i + 1] = g[1] * n; sd.data[i + 2] = g[2] * n; sd.data[i + 3] = 255;
+  scene.add(buildBlockSides());
+
+  // Satellite photo draped over its footprint (reference mode only).
+  let satMesh = null;
+  if (satellite) {
+    const [x0, y0, x1, y1] = CONFIG.satellite.bounds;
+    const [ax, az] = toM([x0, y0]), [bx, bz] = toM([x1, y1]);
+    const st = new THREE.Texture(satellite); st.colorSpace = THREE.SRGBColorSpace; st.anisotropy = 8; st.needsUpdate = true;
+    satMesh = new THREE.Mesh(new THREE.PlaneGeometry(bx - ax, bz - az), new THREE.MeshBasicMaterial({ map: st, transparent: true, opacity: 0.96, depthWrite: false }));
+    satMesh.rotation.x = -Math.PI / 2; satMesh.position.set((ax + bx) / 2, 0.2, (az + bz) / 2);
+    satMesh.renderOrder = 2; satMesh.visible = false;
+    scene.add(satMesh);
   }
-  sctx.putImageData(sd, 0, 0);
-  const stex = new THREE.CanvasTexture(sv); stex.colorSpace = THREE.SRGBColorSpace; stex.anisotropy = 4;
-  const outer = new THREE.Mesh(new THREE.PlaneGeometry(OSZ, OSZ), new THREE.MeshStandardMaterial({ map: stex, roughness: 1 }));
-  outer.rotation.x = -Math.PI / 2; outer.position.y = -0.08; outer.receiveShadow = true;
-  scene.add(outer);
-  const far = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000), new THREE.MeshStandardMaterial({ color: 0x5a7d45, roughness: 1 }));
-  far.rotation.x = -Math.PI / 2; far.position.y = -0.3; scene.add(far);
 
   // ---------- water (Säveån)
   const wc = document.createElement('canvas'); wc.width = GW; wc.height = GH;
@@ -190,17 +210,15 @@ export function buildTerrain(scene, net, refImage) {
   // ---------- trees
   const rand = d3.randomLcg(7);
   const spruce = [], birch = [];
-  const tries = 26000;
+  const tries = 30000;
   for (let i = 0; i < tries; i++) {
-    const x = (rand() - 0.5) * 2200, z = (rand() - 0.5) * 1600;
-    const inside = Math.abs(x) < MAP_HALF[0] && Math.abs(z) < MAP_HALF[1];
+    // keep whole crowns on the block
+    const x = (rand() - 0.5) * (MAP_HALF[0] * 2 - 8), z = (rand() - 0.5) * (MAP_HALF[1] * 2 - 8);
     const f = forestness(x, z);
-    let p = f > 0.52 ? 0.85 : f > 0.46 ? 0.25 : 0.025;
-    if (inside) {
-      const c = at(x, z);
-      if (c !== C.GREEN) continue;
-      if (nearClass(x, z, C.ROAD, 5) || nearClass(x, z, C.WATER, 3) || nearClass(x, z, C.URBAN, 2)) continue;
-    } else p *= 1.1;
+    const p = f > 0.52 ? 0.85 : f > 0.46 ? 0.25 : 0.025;
+    const c = at(x, z);
+    if (c !== C.GREEN) continue;
+    if (nearClass(x, z, C.ROAD, 5) || nearClass(x, z, C.WATER, 3) || nearClass(x, z, C.URBAN, 2)) continue;
     if (rand() > p) continue;
     if (nearRoad(x, z, 6)) continue;
     const big = 0.75 + rand() * 0.6;
@@ -231,8 +249,52 @@ export function buildTerrain(scene, net, refImage) {
   return {
     ground, groundMat, mapTex: tex, refTex, water, waterNormal: normal,
     update(t) { normal.offset.set((t * 0.012) % 1, (t * 0.007) % 1); },
-    setReference(on) { groundMat.map = on ? refTex : tex; groundMat.needsUpdate = true; water.visible = !on; },
+    // mode: false | 'map' | 'satellite'
+    setReference(mode) {
+      groundMat.map = mode === 'map' ? refTex : tex; groundMat.needsUpdate = true;
+      water.visible = mode !== 'map';
+      if (satMesh) satMesh.visible = mode === 'satellite';
+    },
   };
+}
+
+// Soil cross-section on the four sides of the diorama block.
+function buildBlockSides() {
+  const D = BLOCK_DEPTH, W = MAP_HALF[0] * 2, H = MAP_HALF[1] * 2;
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 256;
+  const ctx = cv.getContext('2d');
+  const layers = [[0, '#4f7a3a'], [0.035, '#3f2f22'], [0.2, '#5a4330'], [0.42, '#8a6d4b'], [0.66, '#6f6a62'], [1, '#55524d']];
+  const g = ctx.createLinearGradient(0, 0, 0, 256);
+  layers.forEach(([t, c], i) => { g.addColorStop(t, c); if (i + 1 < layers.length) g.addColorStop(Math.max(t, layers[i + 1][0] - 0.004), c); });
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 1024, 256);
+  const rand = d3.randomLcg(3);
+  for (let i = 0; i < 900; i++) { // pebbles and rocks, bigger towards the bottom
+    const y = 40 + rand() * 216, r = 0.6 + rand() * (y / 256) * 4;
+    ctx.fillStyle = `rgba(${y > 160 ? '40,38,36' : '200,180,150'},${0.12 + rand() * 0.18})`;
+    ctx.beginPath(); ctx.ellipse(rand() * 1024, y, r * 1.6, r, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  for (let x = 0; x < 1024; x += 3) { // ragged grass lip
+    ctx.fillStyle = '#5d8a44'; ctx.fillRect(x, 0, 3, 7 + rand() * 6);
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.wrapS = THREE.RepeatWrapping; tex.anisotropy = 4;
+  const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1 });
+  const group = new THREE.Group();
+  const side = (len, x, z, rotY) => {
+    const geo = new THREE.PlaneGeometry(len, D);
+    const t = tex.clone(); t.needsUpdate = true; t.repeat.set(len / (D * 4), 1);
+    const m = new THREE.Mesh(geo, mat.clone()); m.material.map = t;
+    m.position.set(x, -D / 2, z); m.rotation.y = rotY; m.receiveShadow = true;
+    group.add(m);
+  };
+  side(W, 0, MAP_HALF[1], 0);
+  side(W, 0, -MAP_HALF[1], Math.PI);
+  side(H, MAP_HALF[0], 0, Math.PI / 2);
+  side(H, -MAP_HALF[0], 0, -Math.PI / 2);
+  const bottom = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ color: 0x3b3833, roughness: 1 }));
+  bottom.rotation.x = Math.PI / 2; bottom.position.y = -D;
+  group.add(bottom);
+  return group;
 }
 
 function makeWaterNormal() {

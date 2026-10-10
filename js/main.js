@@ -17,8 +17,10 @@ async function main() {
   const world = new World(net, { seed: (Date.now() & 0xffff) | 1 });
   const view = createScene(document.getElementById('scene'));
   await nextFrame();
-  const ref = await loadImage('references/kastenhof.png');
-  const terrain = buildTerrain(view.scene, net, ref);
+  const [ref, landcover, satellite] = await Promise.all([
+    loadImage('references/kastenhof.png'), loadImage('references/landcover.png'), loadImage('references/satellite-map.webp'),
+  ]);
+  const terrain = buildTerrain(view.scene, net, ref, { landcover, satellite });
   const roads = buildRoads(view.scene, net);
   buildLabels(view.scene, net);
   const vehicles = createVehicleRenderer(view.scene, net);

@@ -28,9 +28,10 @@ export const NETWORK = {
     { id: 'OFFE', name: 'Avfart 86', pts: TRACES.OFFE, from: { carriageway: 'E20E' }, to: { junction: 'RB' }, group: 'E20E' },
     // Eastbound on-ramp from the roundabout.
     { id: 'ONE', name: 'Påfart 86', pts: TRACES.ONE, from: { junction: 'RB' }, to: { carriageway: 'E20E' }, group: 'E20E' },
-    // Westbound parallel carriageway (drawn one-way on the map): splits off at
-    // Kastenhofsmotet and re-joins E20 west of Dageborgsleden.
-    { id: 'CONN', name: 'E20', pts: TRACES.CONN, from: { carriageway: 'E20W' }, to: { carriageway: 'E20W' }, group: 'CONN', bridgeOver: 'DAG' },
+    // Westbound off-ramp from Kastenhofsmotet down to Dageborgsleden, and the
+    // on-ramp from there back to E20. Both meet Dageborgsleden at grade.
+    { id: 'OFFW', name: 'Avfart 86', pts: TRACES.OFFW, from: { carriageway: 'E20W' }, to: { junction: 'J_CW' }, group: 'OFFW' },
+    { id: 'ONW', name: 'Påfart 86', pts: TRACES.ONW, from: { junction: 'J_CW' }, to: { carriageway: 'E20W' }, group: 'ONW' },
   ],
 
   // Two-way roads (one lane each direction).
@@ -42,14 +43,14 @@ export const NETWORK = {
     { id: 'HAR', name: 'Härskogsvägen', kind: 'main', pts: TRACES.HAR,
       start: { junction: 'RB' }, end: { boundary: { id: 'HAR', label: 'Härskogsvägen' } } },
     { id: 'DAG', name: 'Dageborgsleden', kind: 'main', pts: TRACES.DAG,
-      start: { boundary: { id: 'DAG', label: 'Dageborgsleden' } }, end: { junction: 'J_DS' }, via: ['J_KD'] },
+      start: { boundary: { id: 'DAG', label: 'Dageborgsleden' } }, end: { junction: 'J_DS' }, via: ['J_KD', 'J_CW'] },
     { id: 'KAST', name: 'Kastenhofsvägen', kind: 'local', pts: TRACES.KAST,
       start: { boundary: { id: 'KAST', label: 'Kastenhofsvägen' } }, end: { junction: 'J_KD' } },
     { id: 'LAG', name: 'Laggarns väg', kind: 'local', pts: TRACES.LAG,
       start: { junction: 'J_LS' }, end: { boundary: { id: 'LAG', label: 'Laggarns väg' } }, via: ['J_JL'] },
     { id: 'JUT', name: 'Jutagårdsvägen', kind: 'local', pts: TRACES.JUT,
       start: { junction: 'J_JL' }, end: { boundary: { id: 'JUT', label: 'Jutagårdsvägen' } } },
-    { id: 'PEND', name: 'Pendelparkering', kind: 'local', pts: [[902, 748], [903, 722], [915, 706], [940, 698]],
+    { id: 'PEND', name: 'Pendelparkering', kind: 'local', pts: [[911, 750], [911, 733], [913, 720], [925, 707], [940, 700]],
       start: { junction: 'J_P' }, end: { parking: { id: 'P', label: 'Pendelparkering' } } },
   ],
 
@@ -58,16 +59,20 @@ export const NETWORK = {
   //   right     – unsigned junction: högerregeln (yield to traffic from the right)
   //   roundabout– cirkulationsplats, väjningsplikt on every entry
   junctions: [
-    { id: 'RB', type: 'roundabout', center: [1307, 642], radius: 28, legTrim: 46 },
-    { id: 'J_DS', type: 'priority', center: [1000, 748], minor: ['DAG'], trim: 9 },
+    { id: 'RB', type: 'roundabout', center: [1310, 645], radius: 38, legTrim: 58 },
+    { id: 'J_DS', type: 'priority', center: [1005, 748], minor: ['DAG'], trim: 9 },
+    { id: 'J_CW', type: 'priority', center: [872, 479], minor: ['OFFW', 'ONW'], trim: 9 },
     { id: 'J_KD', type: 'priority', center: [783, 403], minor: ['KAST'], trim: 8 },
-    { id: 'J_P', type: 'priority', center: [903, 751], exit: ['PEND'], trim: 7 },
+    { id: 'J_P', type: 'priority', center: [911, 750], exit: ['PEND'], trim: 7 },
     { id: 'J_LS', type: 'priority', center: [655, 866], minor: ['LAG'], trim: 8 },
     { id: 'J_JL', type: 'right', center: [658, 900], trim: 6 },
   ],
 
   parking: [
-    { id: 'P', center: [928, 700], size: [70, 32], angle: -0.18 },
+    { id: 'P', center: [940, 700], size: [44, 32], angle: -0.45 },
+    // Large gravel lot north of the roundabout, between the on-ramp and Hedeforsvägen
+    // (seen on the satellite image; scenery only, no traffic).
+    { id: 'P2', center: [1295, 535], size: [128, 40], angle: 1.242 },
   ],
 };
 

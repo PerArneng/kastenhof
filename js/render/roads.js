@@ -64,7 +64,7 @@ function lineMarks(pl, hAt, offset, width, dash, gap, out, s0 = 0, s1 = pl.len) 
 const hOfPath = (p) => (s) => { const f = Math.min(p.n - 1, Math.max(0, s / p.ds)); const i = Math.floor(f); return p.h[i] + (p.h[Math.min(p.n - 1, i + 1)] - p.h[i]) * (f - i); };
 
 export function buildRoads(scene, net) {
-  const asphalt = [], shoulder = [], marks = [], patch = [], concrete = [], embank = [], apron = [], island = [];
+  const asphalt = [], shoulder = [], marks = [], patch = [], concrete = [], embank = [], apron = [], island = [], splitters = [];
   const paths = net.paths;
 
   // ---- lane surfaces
@@ -112,28 +112,31 @@ export function buildRoads(scene, net) {
   // ---- two-way roads: centre line (mittlinje 3+9), thin solid edge lines (kantlinje)
   for (const pc of net.pieces) {
     const cl = new Polyline(pc.center, 1);
-    const W = pc.width / 2;
+    const W = pc.width / 2, fl = pc.flare || (() => 0);
     const h0 = () => 0;
-    strip(cl.points(), null, -W - 0.7, W + 0.7, Y.shoulder, shoulder);
+    const pts = cl.points();
+    strip(pts, null, (i) => -W - 0.7 - fl(i * cl.ds), (i) => W + 0.7 + fl(i * cl.ds), Y.shoulder, shoulder);
     if (pc.kind === 'main') {
-      lineMarks(cl, h0, 0, 0.12, 3, 9, marks);
-      lineMarks(cl, h0, -W + 0.2, 0.1, 0, 0, marks);
-      lineMarks(cl, h0, W - 0.2, 0.1, 0, 0, marks);
+      // centre line only where the two directions run side by side
+      let s0 = 0, s1 = cl.len;
+      while (s0 < s1 && fl(s0) > 0.15) s0 += 1;
+      while (s1 > s0 && fl(s1) > 0.15) s1 -= 1;
+      if (s1 - s0 > 4) lineMarks(cl, h0, 0, 0.12, 3, 9, marks, s0, s1);
+      for (const side of [-1, 1]) {
+        const edge = new Polyline(cl.sliceOffset(0, cl.len, (s) => side * (W - 0.2 + fl(s))), 1);
+        lineMarks(edge, h0, 0, 0.1, 0, 0, marks);
+      }
     }
   }
 
   // ---- junction patches
   for (const J of Object.values(net.junctions)) {
-    if (J.patch) {
-      const P = J.patch, pos = [], idx = [];
-      const cx = P.reduce((a, p) => a + p[0], 0) / P.length, cz = P.reduce((a, p) => a + p[1], 0) / P.length;
-      pos.push(cx, Y.patch, cz);
-      P.forEach((p) => pos.push(p[0], Y.patch, p[1]));
-      for (let i = 0; i < P.length; i++) idx.push(0, 1 + ((i + 1) % P.length), 1 + i);
-      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
-      if (g.attributes.normal.getY(0) < 0) { for (let i = 0; i < idx.length; i += 3) { const t = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = t; } g.setIndex(idx); g.computeVertexNormals(); }
-      patch.push(g);
+    for (const A of J.arms || []) {
+      // run each arm a little past the centre so opposite arms overlap
+      const [p, c] = A.pts, d = Math.hypot(c[0] - p[0], c[1] - p[1]) || 1, u = [(c[0] - p[0]) / d, (c[1] - p[1]) / d], ext = A.width / 2;
+      strip([[p[0] - u[0] * 0.5, p[1] - u[1] * 0.5], [c[0] + u[0] * ext, c[1] + u[1] * ext]], null, -A.width / 2, A.width / 2, Y.patch, patch);
     }
+    for (const T of J.through || []) lineMarks(new Polyline(T, 1), () => 0, 0, 0.12, 3, 9, marks);
     if (J.type === 'roundabout') {
       const R = J.R;
       const ring = new THREE.RingGeometry(R - 3.0, R + 3.6, 72, 1); ring.rotateX(-Math.PI / 2); ring.translate(J.c[0], Y.lane, J.c[1]); asphalt.push(ring);
@@ -143,6 +146,20 @@ export function buildRoads(scene, net) {
       const mound = new THREE.SphereGeometry(R - 6, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2); mound.scale(1, 0.12, 1); mound.translate(J.c[0], 0.3, J.c[1]); island.push(mound);
       // ring edge lines
       const outer = new THREE.RingGeometry(R + 3.3, R + 3.45, 96, 1); outer.rotateX(-Math.PI / 2); outer.translate(J.c[0], Y.mark, J.c[1]); marks.push(outer);
+      // raised splitter islands between the entry and exit lane of each leg
+      const conns = J.connectors.map((id) => paths[id]);
+      // pair each entry with the exit whose outer end is closest (the same road,
+      // or the neighbouring ramp where an off- and on-ramp meet the ring side by side)
+      for (const inC of conns.filter((c) => c.entry)) {
+        const a = inC.point(0);
+        let outC = null, bd = 16;
+        for (const c of conns) {
+          if (!c.exitConn) continue;
+          const b = c.point(c.len), d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+          if (d < bd) { bd = d; outC = c; }
+        }
+        if (outC) splitterIsland(J, inC, outC, paths, splitters);
+      }
     }
   }
 
@@ -185,6 +202,7 @@ export function buildRoads(scene, net) {
     embank: new THREE.MeshStandardMaterial({ color: 0x5d7d43, roughness: 1, side: THREE.DoubleSide }),
     apron: new THREE.MeshStandardMaterial({ color: 0x9c958a, roughness: 0.95 }),
     island: new THREE.MeshStandardMaterial({ color: 0x6d9a4c, roughness: 1 }),
+    splitter: new THREE.MeshStandardMaterial({ color: 0xe4e1d8, roughness: 0.8 }),
   };
   const group = new THREE.Group();
   const add = (list, mat, { shadow = true } = {}) => {
@@ -193,11 +211,47 @@ export function buildRoads(scene, net) {
     const m = new THREE.Mesh(g, mat); m.receiveShadow = true; m.castShadow = shadow && (mat === mats.concrete || mat === mats.embank); group.add(m);
   };
   add(shoulder, mats.shoulder); add(asphalt, mats.asphalt); add(patch, mats.patch); add(marks, mats.marks);
-  add(concrete, mats.concrete); add(embank, mats.embank); add(apron, mats.apron); add(island, mats.island);
+  add(concrete, mats.concrete); add(embank, mats.embank); add(apron, mats.apron); add(island, mats.island); add(splitters, mats.splitter);
   scene.add(group);
   const furniture = buildFurniture(net);
   scene.add(furniture);
   return { group, mats, furniture };
+}
+
+// Splitter island between a roundabout entry and exit: bounded by the inner
+// edges of the approaching/leaving lanes (and their ring connectors) and the
+// outer edge of the ring.
+function splitterIsland(J, inC, outC, paths, out) {
+  const rMin = J.R + 3.9, back = CONFIG.roundaboutFlare.length + 6;
+  const sample = (p, s0, s1, acc) => { for (let s = s0; s <= s1; s += 1) { const [x, z] = p.point(s), [nx, nz] = p.normal(s); acc.push([x, z, nx, nz, p.width]); } return acc; };
+  const inL = paths[inC.inLane], outL = paths[outC.outLane];
+  const A = sample(inC, 0, inC.len, sample(inL, Math.max(0, inL.len - back), inL.len, []));
+  const B = sample(outL, 0, Math.min(outL.len, back), sample(outC, 0, outC.len, [])).reverse();
+  const nearestOf = (P, x, z) => { let b = P[0], bd = Infinity; for (const q of P) { const d = (q[0] - x) ** 2 + (q[1] - z) ** 2; if (d < bd) { bd = d; b = q; } } return b; };
+  const edge = (P, other) => {
+    const e = P.map(([x, z, nx, nz, w]) => {
+      const om = nearestOf(other, x, z); // inner edge faces the other lane
+      const sg = nx * (om[0] - x) + nz * (om[1] - z) > 0 ? 1 : -1, o = w / 2 + 0.35;
+      return [x + nx * sg * o, z + nz * sg * o];
+    });
+    const pl = new Polyline(e, 0.5), N = 48, r = [];
+    for (let k = 0; k <= N; k++) r.push(pl.point(pl.len * k / N));
+    return r; // from the leg towards the ring
+  };
+  const EA = edge(A, B), EB = edge(B, A);
+  const L = [], R = [];
+  for (let k = EA.length - 1; k >= 0; k--) { // walk outwards from the ring until the lanes meet
+    const a = EA[k], b = EB[k];
+    if (Math.hypot(a[0] - J.c[0], a[1] - J.c[1]) < rMin || Math.hypot(b[0] - J.c[0], b[1] - J.c[1]) < rMin) continue;
+    const gap = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (gap < 0.5 || gap > 11) break; // lanes meet, or two separate ramps part ways (grass beyond)
+    L.unshift(new THREE.Vector2(a[0], a[1])); R.unshift(new THREE.Vector2(b[0], b[1]));
+  }
+  if (L.length < 3) return;
+  const shape = new THREE.Shape(L.concat(R.reverse()));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: 0.16, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.2, bevelSegments: 1 });
+  g.rotateX(Math.PI / 2); g.translate(0, 0.2, 0); // shape y → world z, extruded downwards from the top
+  out.push(g);
 }
 
 // Grass embankment sloping down from elevated road edges; vertical concrete

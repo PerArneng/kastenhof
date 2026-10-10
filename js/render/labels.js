@@ -86,8 +86,8 @@ export function buildLabels(scene, net) {
     let ang = Math.atan2(tz, tx);
     if (Math.cos(ang) < 0) ang += Math.PI; // keep text reading left-to-right
     const side = q.side || 1, [nx, nz] = raw.normal(q.s);
-    const off = 9.5 * side;
-    group.add(groundLabel(L.text, px + nx * off, pz + nz * off, ang, 6.2, { color: '#ffffff', shadow: 'rgba(10,20,10,0.75)' }));
+    const off = 11.5 * side;
+    group.add(groundLabel(L.text, px + nx * off, pz + nz * off, ang, 9, { size: 96, weight: 700, color: '#ffffff', stroke: 'rgba(12,18,14,0.9)', shadow: 'rgba(0,0,0,0.8)' }));
   }
   for (const W of LABELS.water) {
     const [x, z] = toM(W.at);
@@ -95,15 +95,15 @@ export function buildLabels(scene, net) {
   }
   for (const at of LABELS.shields) {
     const [x, z] = toM(at);
-    const s = sprite(shieldCanvas('E20', '#2f7d32', '#fff', '#eaf5ea'), 0.014); s.position.set(x, 12, z); group.add(s);
+    const s = sprite(shieldCanvas('E20', '#2f7d32', '#fff', '#eaf5ea'), 0.0095); s.position.set(x, 12, z); group.add(s);
   }
   for (const at of LABELS.exits) {
     const [x, z] = toM(at);
-    const s = sprite(exitCanvas(), 0.019); s.position.set(x, 14, z); group.add(s);
+    const s = sprite(exitCanvas(), 0.012); s.position.set(x, 14, z); group.add(s);
   }
   for (const p of LABELS.pois) {
     const [x, z] = toM(p.at);
-    const s = sprite(pinCanvas(p.text, p.kind), 0.019); s.center.set(36 / (s.material.map.image.width), 0.5); s.position.set(x, 6, z); group.add(s);
+    const s = sprite(pinCanvas(p.text, p.kind), 0.012); s.center.set(36 / (s.material.map.image.width), 0.5); s.position.set(x, 6, z); group.add(s);
   }
   scene.add(group);
   return group;

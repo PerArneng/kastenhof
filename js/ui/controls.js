@@ -74,7 +74,12 @@ export function createControls({ world, camera, onToggle }) {
   const dbg = d3.select('#btn-debug').on('click', () => toggleDebug());
   function toggleDebug() { state.debug = !state.debug; dbg.classed('on', state.debug); d3.select('#legend').classed('hidden', !state.debug); onToggle('debug', state.debug); }
   const ref = d3.select('#btn-ref').on('click', () => toggleRef());
-  function toggleRef() { state.ref = !state.ref; ref.classed('on', state.ref); onToggle('ref', state.ref); }
+  // Cycles: off → Google map → satellite photo → off
+  function toggleRef() {
+    state.ref = state.ref === false ? 'map' : state.ref === 'map' ? 'satellite' : false;
+    ref.classed('on', !!state.ref).text(state.ref === 'satellite' ? 'Ref: satellit' : state.ref === 'map' ? 'Ref: karta' : 'Ref');
+    onToggle('ref', state.ref);
+  }
   d3.select('#btn-view').on('click', () => onToggle('view'));
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
