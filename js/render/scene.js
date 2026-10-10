@@ -64,6 +64,11 @@ export function createScene(canvas) {
     t.x = THREE.MathUtils.clamp(t.x, -MAP_HALF[0], MAP_HALF[0]);
     t.z = THREE.MathUtils.clamp(t.z, -MAP_HALF[1], MAP_HALF[1]);
     t.y = 0;
+    // Road layers sit only centimetres apart, so keep the near plane as far
+    // out as the view allows; a fixed near of 1 m loses depth precision when
+    // zoomed out and the asphalt/shoulder/markings z-fight (flicker).
+    const near = THREE.MathUtils.clamp(camera.position.distanceTo(t) * 0.2, 1, 400);
+    if (Math.abs(near - camera.near) > 0.01 * near) { camera.near = near; camera.updateProjectionMatrix(); }
   });
 
   // Sky: only used to light the scene (environment map); the visible

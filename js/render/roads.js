@@ -194,10 +194,10 @@ export function buildRoads(scene, net) {
   }
 
   const mats = {
-    asphalt: new THREE.MeshStandardMaterial({ color: 0x3a3d42, roughness: 0.92, metalness: 0 }),
+    asphalt: new THREE.MeshStandardMaterial({ color: 0x3a3d42, roughness: 0.92, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
     shoulder: new THREE.MeshStandardMaterial({ color: 0x55585d, roughness: 0.95 }),
-    patch: new THREE.MeshStandardMaterial({ color: 0x3a3d42, roughness: 0.92 }),
-    marks: new THREE.MeshStandardMaterial({ color: 0xf2f2ee, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+    patch: new THREE.MeshStandardMaterial({ color: 0x3a3d42, roughness: 0.92, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    marks: new THREE.MeshStandardMaterial({ color: 0xf2f2ee, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
     concrete: new THREE.MeshStandardMaterial({ color: 0xa9a7a1, roughness: 0.85, side: THREE.DoubleSide }),
     embank: new THREE.MeshStandardMaterial({ color: 0x5d7d43, roughness: 1, side: THREE.DoubleSide }),
     apron: new THREE.MeshStandardMaterial({ color: 0x9c958a, roughness: 0.95 }),
