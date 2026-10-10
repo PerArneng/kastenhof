@@ -6,6 +6,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { MAP_HALF } from '../network/build.js';
 
 export const TOD = {
@@ -62,7 +63,8 @@ export function createScene(canvas) {
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffffff, 3);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(4096, 4096);
+  const shadowRes = renderer.capabilities.maxTextureSize >= 16384 ? 4096 : 2048;
+  sun.shadow.mapSize.set(shadowRes, shadowRes);
   const sc = sun.shadow.camera;
   sc.left = -MAP_HALF[0] - 60; sc.right = MAP_HALF[0] + 60; sc.top = MAP_HALF[1] + 60; sc.bottom = -MAP_HALF[1] - 60;
   sc.near = 10; sc.far = 3000;
@@ -75,6 +77,16 @@ export function createScene(canvas) {
   // Post
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
+  // Replace NaN/Inf and clamp extreme HDR values (e.g. specular glints) so a
+  // single bad pixel can never be smeared over the whole screen by the bloom.
+  composer.addPass(new ShaderPass({
+    uniforms: { tDiffuse: { value: null } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+      void main(){ vec4 c = texture2D(tDiffuse, vUv);
+        if (any(isnan(c)) || any(isinf(c))) c = vec4(0.0, 0.0, 0.0, 1.0);
+        gl_FragColor = vec4(clamp(c.rgb, 0.0, 24.0), 1.0); }`,
+  }));
   const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.2, 0.4, 3.0);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
@@ -106,6 +118,7 @@ export function createScene(canvas) {
     envRT = pmrem.fromScene(envScene, 0.04);
     scene.environment = envRT.texture;
     scene.environmentIntensity = p.envI;
+    bloom.enabled = p.bloom[0] > 0.2;
     bloom.strength = p.bloom[0]; bloom.radius = p.bloom[1]; bloom.threshold = p.bloom[2];
   }
 
@@ -145,6 +158,13 @@ export function createScene(canvas) {
     camera.updateProjectionMatrix();
   }
   window.addEventListener('resize', () => { resize(); });
+  // If the GPU drops the context (driver reset, memory pressure), recover by reloading.
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    const l = document.getElementById('loading');
+    if (l) { l.classList.remove('done'); l.innerHTML = '<div class="spinner"></div><div>Grafikkortet tappade kontexten – startar om…</div>'; }
+    setTimeout(() => location.reload(), 1500);
+  });
 
   setTimeOfDay('day');
   resize();

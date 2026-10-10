@@ -41,8 +41,8 @@ export function createVehicleRenderer(scene, net) {
   const paths = net.paths;
   const group = new THREE.Group();
   scene.add(group);
-  const paint = new THREE.MeshPhysicalMaterial({ roughness: 0.32, metalness: 0.45, clearcoat: 0.8, clearcoatRoughness: 0.15 });
-  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0f161c, roughness: 0.06, metalness: 0.2, clearcoat: 1, envMapIntensity: 1.4 });
+  const paint = new THREE.MeshPhysicalMaterial({ roughness: 0.34, metalness: 0.4, clearcoat: 0.7, clearcoatRoughness: 0.22 });
+  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0f161c, roughness: 0.16, metalness: 0.2, clearcoat: 1, clearcoatRoughness: 0.12, envMapIntensity: 1.2 });
   const tyre = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.9 });
   const trailerMat = new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.15 });
   const light = () => new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });

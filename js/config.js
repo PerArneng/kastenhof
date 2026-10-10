@@ -9,11 +9,11 @@ export const CONFIG = {
 
   lane: { motorway: 3.5, ramp: 3.6, main: 3.25, local: 3.0, ring: 5.0 },
 
-  // Posted limits (km/h) by road id. Swedish defaults: motorway 110,
-  // rural main roads 70, urban/local 40–50, ramps signed lower.
+  // Posted limits (km/h) by road id: E20 is 100, every other road 50.
+  // Ring/connector/parking values are caps; curves usually limit speed more.
   speed: {
-    E20E: 110, E20W: 110, CONN: 80, OFFE: 70, ONE: 70,
-    HED: 70, HAR: 70, SLV: 70, DAG: 60, KAST: 50, LAG: 40, JUT: 40, PEND: 20,
+    E20E: 100, E20W: 100, CONN: 100, OFFE: 50, ONE: 50,
+    HED: 50, HAR: 50, SLV: 50, DAG: 50, KAST: 50, LAG: 50, JUT: 50, PEND: 20,
     ring: 30, connector: 40,
   },
 

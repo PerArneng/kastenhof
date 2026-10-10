@@ -180,7 +180,7 @@ export function buildTerrain(scene, net, refImage) {
   const alpha = new THREE.CanvasTexture(wc2);
   const normal = makeWaterNormal();
   const waterMat = new THREE.MeshStandardMaterial({
-    color: 0x2b6a86, roughness: 0.08, metalness: 0.1, transparent: true, alphaMap: alpha, normalMap: normal,
+    color: 0x2b6a86, roughness: 0.14, metalness: 0.1, transparent: true, alphaMap: alpha, normalMap: normal,
     normalScale: new THREE.Vector2(0.45, 0.45), envMapIntensity: 1.2,
   });
   const water = new THREE.Mesh(new THREE.PlaneGeometry(MAP_HALF[0] * 2, MAP_HALF[1] * 2), waterMat);
