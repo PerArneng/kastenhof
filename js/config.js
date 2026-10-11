@@ -63,6 +63,8 @@ export const CONFIG = {
     { id: 'GBG-SLR', label: 'Göteborg → Södra Lerum', from: 'E20E', to: 'SLV', rate: 3 },
     // Westbound off-ramp → Dageborgsleden south under E20 → right slip onto Södra Långvägen west.
     { id: 'ALS-SLR', label: 'Alingsås → Södra Lerum', from: 'E20W', to: 'SLV', rate: 3 },
+    // Westbound off-ramp → right onto Dageborgsleden north-west, out at the top-left.
+    { id: 'ALS-STK', label: 'Alingsås → Stenkullen', from: 'E20W', to: 'DAG', rate: 3 },
     // Dageborgsleden south → Påfart 86 (westbound ramp) → E20 towards Göteborg.
     { id: 'STK-GBG', label: 'Stenkullen → Göteborg', from: 'DAG', to: 'E20W', rate: 3 },
   ],
