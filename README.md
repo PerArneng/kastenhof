@@ -9,13 +9,33 @@ open http://localhost:8000
 node test/selftest.mjs 20 1.5   # headless sim check: overlaps, gridlock, throughput
 ```
 
-Controls: drag to orbit, right-drag to pan, scroll to zoom towards the point under the mouse. `Space` pauses, `D` turns on the debug overlay (lanes, conflict points, vehicle states), `R` cycles the reference overlay (Google map → satellite photo → off), `N` cycles day / evening / night, and `V` resets the view. The routes table (top right) lists each route with its cars per minute; −/+ change it, hold Shift to step by 5.
+Controls: drag to orbit, right-drag to pan, scroll to zoom towards the point under the mouse. Keys:
+
+| Key | |
+|---|---|
+| `Space` | pause |
+| `A` | auto mode on/off |
+| `H` | Drönare (drone hover) on/off |
+| `M` | hide / show the menus |
+| `V` | reset the view |
+| `N` | cycle day / evening / night |
+| `D` | debug overlay (lanes, conflict points, vehicle states) |
+| `R` | cycle the reference overlay (Google map → satellite photo → off) |
+
+**Auto mode** is on when the page loads. The camera flies a slow loop like a traffic helicopter, from a high overview down to close-ups of the roundabout, the bridge and the side roads. It runs at 1×, 2× (the default) or 4×. Drönare stays on while it runs. Dragging, panning or zooming hands the camera back to you, and turning Auto on again eases the camera back onto the loop. Hover over the Auto button to see the loop and the spots it looks at.
+
+**Drönare** adds a slight, smooth up-and-down hover to the camera.
+
+**Routes table** (top right): one row per route with its cars per minute. −/+ change the rate, and holding Shift steps by 5. Hover over a row to see that route on the map as arrows in the direction of travel.
+
+**Hiding the menus:** the eye button below the top-left menu slides the menus out of view, which is useful for a wall-mounted dashboard. Click it again to bring them back. The browser remembers the choice.
 
 ## Where to tune
-- `js/config.js`: speed limits, routes (origin, destination and cars per minute; currently only Göteborg → Alingsås on E20), gap acceptance, driver model, lane-change parameters.
+- `js/config.js`: speed limits, gap acceptance, driver model, lane-change parameters, and the routes (origin, destination and cars per minute). Add new routes with the `add-route` Claude skill, which also checks the path drivers actually take.
 - `js/network/traces.js`: road centrelines in map pixels, auto-snapped to the reference image.
 - `tools/satellite.py`: regenerates `references/satellite-map.webp` (satellite warped onto the map) and `references/landcover.png` (forest cover used for tree placement). Run it with `uv run --with numpy --with pillow --with scipy python tools/satellite.py`.
-- `js/network/roads.js`: topology and junction rules (`priority` = väjningsplikt for `minor` legs, `exit` = utfartsregeln, `right` = högerregeln, `roundabout`).
+- `js/render/autoCam.js`: the auto-mode camera loop (`SHOTS`) and its speed.
+- `js/network/roads.js`: map labels (`LABELS`), topology and junction rules (`priority` = väjningsplikt for `minor` legs, `exit` = utfartsregeln, `right` = högerregeln, `roundabout`).
 
 ## Traffic rules modelled
 - Right-hand traffic.
