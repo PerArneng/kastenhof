@@ -117,12 +117,9 @@ export const LABELS = {
     { text: 'Jutagårdsvägen', at: [760, 886], road: 'JUT' },
   ],
   water: [{ text: 'Säveån', at: [337, 325], angle: -0.62 }],
-  shields: [[1155, 432], [581, 804], [340, 913], [1630, 60]],
-  exits: [[1434, 173], [1068, 572]],
-  pois: [
-    { text: 'Kastenhof Herrgård', at: [280, 566], kind: 'pin' },
-    { text: 'Pendelparkering Kastenhof', at: [917, 693], kind: 'parking' },
-    { text: 'Burhults Stuteri & Ridskola', at: [1427, 1003], kind: 'pin' },
-  ],
+  // One E20 shield ~110 m in from each end of the motorway, on the median.
+  shields: [[208, 975], [1497, 139]],
+  exits: [],
+  pois: [],
   busStops: [[880, 763], [1597, 348]],
 };

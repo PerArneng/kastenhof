@@ -14,7 +14,7 @@ export const BLOCK_DEPTH = 34; // metres of soil under the diorama surface
 export const TOD = {
   day: {
     label: 'Dag', sun: [-0.5, 0.78, 0.62], sunColor: 0xfff3e0, sunI: 3.1, hemiSky: 0xcfe6ff, hemiGround: 0x5c7a4a, hemiI: 0.45,
-    fog: 0xc9dbe6, backdrop: ['#e9f1f4', '#bcd2dc', '#93aebb'], exposure: 0.95, turbidity: 5, rayleigh: 1.2, bloom: [0.12, 0.4, 4.0], lights: 0, envI: 0.35,
+    fog: 0xc9dbe6, backdrop: ['#cfdce2', '#9fb7c3', '#738f9d'], exposure: 0.95, turbidity: 5, rayleigh: 1.2, bloom: [0.12, 0.4, 4.0], lights: 0, envI: 0.35,
   },
   golden: {
     label: 'Kväll', sun: [-0.92, 0.13, 0.36], sunColor: 0xffb46b, sunI: 3.4, hemiSky: 0xffd2a8, hemiGround: 0x3e4a3a, hemiI: 0.55,

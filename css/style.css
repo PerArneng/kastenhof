@@ -71,9 +71,28 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 .spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.15); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Menus slide out of view: the HUD up, routes to the right, legend to the left. */
+#hud, #routes, #legend { transition: transform .55s cubic-bezier(.22, .8, .24, 1), opacity .45s ease; }
+body.ui-hidden #hud { transform: translateY(calc(-100% - 28px)); opacity: 0; pointer-events: none; }
+body.ui-hidden #routes { transform: translateX(calc(100% + 28px)); opacity: 0; pointer-events: none; }
+body.ui-hidden #legend { transform: translateX(calc(-100% - 28px)); opacity: 0; pointer-events: none; }
+/* Sits just below the HUD (--hud-bottom is kept up to date from JS) and
+   glides up to the corner when the menus are hidden. */
+#btn-ui { position: fixed; left: 16px; top: calc(var(--hud-bottom, 92px) + 10px); width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center; padding: 0; color: var(--ink); cursor: pointer; opacity: .85;
+  transition: top .55s cubic-bezier(.22, .8, .24, 1), opacity .2s; }
+body.ui-hidden #btn-ui { top: calc(16px + env(safe-area-inset-top, 0px)); }
+#btn-ui:hover { opacity: 1; }
+#btn-ui .ic-show { display: none; }
+body.ui-hidden #btn-ui .ic-show { display: block; }
+body.ui-hidden #btn-ui .ic-hide { display: none; }
+
 @media (max-width: 720px) {
   #hud { top: 8px; left: 8px; right: 8px; gap: 10px; padding: 8px 10px; }
   .stats { gap: 10px; }
   #routes { top: auto; bottom: 8px; left: 8px; right: 8px; min-width: 0; }
+  body.ui-hidden #routes { transform: translateY(calc(100% + 16px)); }
+  #btn-ui { left: 8px; }
+  body.ui-hidden #btn-ui { top: 8px; }
   #legend { left: 8px; right: 8px; bottom: 110px; max-width: none; }
 }

@@ -32,7 +32,7 @@ export function createControls({ world, onToggle, onHoverRoute = () => {}, onHov
 
   // ----- HUD
   const speeds = [1, 2, 4, 8];
-  const state = { speed: 1, paused: false, tod: 'day', debug: false, ref: false, hover: true, auto: false, autoSpeed: 1 };
+  const state = { speed: 1, paused: false, tod: 'day', debug: false, ref: false, hover: true, auto: false, autoSpeed: 2 };
   d3.select('#seg-speed').selectAll('button').data(speeds).join('button').text((d) => `${d}×`)
     .classed('on', (d) => d === state.speed).on('click', (ev, d) => { state.speed = d; d3.selectAll('#seg-speed button').classed('on', (x) => x === d); });
   const tods = [['day', 'Dag'], ['golden', 'Kväll'], ['night', 'Natt']];
@@ -69,6 +69,22 @@ export function createControls({ world, onToggle, onHoverRoute = () => {}, onHov
     if (on && !state.hover) setHover(true);
     onToggle('auto', on);
   }
+  // Show / hide the menus; remembered per browser. The toggle sits below
+  // the HUD, whose height changes when it wraps on narrow windows.
+  const hudEl = document.getElementById('hud');
+  const placeUiBtn = () => document.documentElement.style.setProperty('--hud-bottom', `${hudEl.offsetTop + hudEl.offsetHeight}px`);
+  new ResizeObserver(placeUiBtn).observe(hudEl);
+  placeUiBtn();
+  const uiBtn = d3.select('#btn-ui').on('click', () => setUi(!state.ui));
+  function setUi(on) {
+    state.ui = on;
+    document.body.classList.toggle('ui-hidden', !on);
+    uiBtn.attr('title', on ? 'Dölj menyer (M)' : 'Visa menyer (M)').attr('aria-label', on ? 'Dölj menyer' : 'Visa menyer').attr('aria-pressed', on);
+    try { localStorage.setItem('kastenhof.ui', on ? '1' : '0'); } catch {}
+  }
+  let uiSaved = null;
+  try { uiSaved = localStorage.getItem('kastenhof.ui'); } catch {}
+  setUi(uiSaved !== '0');
   d3.select('#btn-view').on('click', () => { setAuto(false); onToggle('view'); });
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
@@ -78,6 +94,7 @@ export function createControls({ world, onToggle, onHoverRoute = () => {}, onHov
     else if (e.key === 'v' || e.key === 'V') { setAuto(false); onToggle('view'); }
     else if (e.key === 'h' || e.key === 'H') toggleHover();
     else if (e.key === 'a' || e.key === 'A') setAuto(!state.auto);
+    else if (e.key === 'm' || e.key === 'M') setUi(!state.ui);
     else if (e.key === 'n' || e.key === 'N') setTod(state.tod === 'day' ? 'golden' : state.tod === 'golden' ? 'night' : 'day');
   });
 

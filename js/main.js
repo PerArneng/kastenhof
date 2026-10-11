@@ -53,6 +53,7 @@ async function main() {
 
   // Any orbit / pan / zoom by the user hands the camera back to them.
   view.controls.addEventListener('start', () => ui.setAuto(false));
+  autoCam.setSpeed(ui.state.autoSpeed);
   ui.setAuto(true); // ambient dashboard: start flying
 
   document.getElementById('loading').classList.add('done');
