@@ -39,7 +39,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 .seg button.on { background: rgba(255,255,255,0.16); color: var(--ink); }
 
 #routes { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px; padding: 10px 12px 8px; min-width: 260px; }
-.rt-title { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+.rt-title { font-weight: 700; font-size: 13px; margin-bottom: 4px; cursor: default; }
+.rt-title:hover { color: #ffd34d; }
 #routes table { border-collapse: collapse; width: 100%; font-size: 13px; }
 #routes th { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-dim); text-align: left; padding: 4px 0 6px; border-bottom: 1px solid var(--glass-brd); }
 #routes th.num { text-align: center; }

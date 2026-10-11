@@ -26,7 +26,7 @@ Controls: drag to orbit, right-drag to pan, scroll to zoom towards the point und
 
 **Drönare** adds a slight, smooth up-and-down hover to the camera.
 
-**Routes table** (top right): one row per route with its cars per minute. −/+ change the rate, and holding Shift steps by 5. Hover over a row to see that route on the map as arrows in the direction of travel.
+**Routes table** (top right): one row per route with its cars per minute. −/+ change the rate, and holding Shift steps by 5. Hover over a row to see that route on the map as arrows in the direction of travel, or over the "Rutter" title to see all routes at once.
 
 **Hiding the menus:** the eye button below the top-left menu slides the menus out of view, which is useful for a wall-mounted dashboard. Click it again to bring them back. The browser remembers the choice.
 

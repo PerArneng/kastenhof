@@ -79,7 +79,7 @@ export function createRouteOverlay(scene, net, router, view) {
   const arrowGeo = chevronGeometry();
 
   const cache = new Map();
-  let cur = null;
+  let cur = [];
 
   function build(route) {
     const pts = routePolyline(net, router, route);
@@ -100,39 +100,43 @@ export function createRouteOverlay(scene, net, router, view) {
   const pt = {};
 
   return {
-    show(route) {
-      if (cur) group.remove(cur.g);
-      cur = null;
-      if (route) {
+    // Show one route, a list of routes (e.g. all of them), or nothing (null).
+    show(routes) {
+      for (const c of cur) group.remove(c.g);
+      cur = [];
+      for (const route of routes ? [].concat(routes) : []) {
         if (!cache.has(route.id)) cache.set(route.id, build(route));
-        cur = cache.get(route.id);
-        if (cur) group.add(cur.g);
+        const c = cache.get(route.id);
+        if (c) { group.add(c.g); cur.push(c); }
       }
-      group.visible = !!cur;
+      group.visible = cur.length > 0;
     },
     update(t) {
-      if (!cur) return;
-      const { m, arrows, max, start, end } = cur;
+      if (!cur.length) return;
       // Keep arrows a steady size on screen: metres per pixel at the orbit target.
       const { camera, controls } = view;
       const mpp = (camera.position.distanceTo(controls.target) * 2 * Math.tan((camera.fov * Math.PI) / 360)) / window.innerHeight;
       const size = Math.min(12, Math.max(1, (mpp * PX) / ARROW));
       const spacing = ARROW * GAP * size;
-      start.scale.setScalar(size); end.scale.setScalar(size);
-      const phase = (t * FLOW * ARROW * size) % spacing;
-      const count = Math.min(max, Math.ceil((m.len - phase) / spacing));
-      arrows.count = count;
-      for (let i = 0; i < count; i++) {
-        const s = Math.min(m.len, phase + i * spacing);
-        m.at(s, pt);
-        P.set(pt.x, pt.y, pt.z);
-        Q.setFromAxisAngle(up, pt.yaw);
-        // Fade in at the start and out at the end of the route.
-        const k = Math.min(1, s / spacing, (m.len - s) / spacing);
-        S.setScalar(size * Math.max(0.05, k));
-        arrows.setMatrixAt(i, M.compose(P, Q, S));
-      }
-      arrows.instanceMatrix.needsUpdate = true;
+      for (const c of cur) drawArrows(c, t, size, spacing);
     },
   };
+
+  function drawArrows({ m, arrows, max, start, end }, t, size, spacing) {
+    start.scale.setScalar(size); end.scale.setScalar(size);
+    const phase = (t * FLOW * ARROW * size) % spacing;
+    const count = Math.min(max, Math.ceil((m.len - phase) / spacing));
+    arrows.count = count;
+    for (let i = 0; i < count; i++) {
+      const s = Math.min(m.len, phase + i * spacing);
+      m.at(s, pt);
+      P.set(pt.x, pt.y, pt.z);
+      Q.setFromAxisAngle(up, pt.yaw);
+      // Fade in at the start and out at the end of the route.
+      const k = Math.min(1, s / spacing, (m.len - s) / spacing);
+      S.setScalar(size * Math.max(0.05, k));
+      arrows.setMatrixAt(i, M.compose(P, Q, S));
+    }
+    arrows.instanceMatrix.needsUpdate = true;
+  }
 }

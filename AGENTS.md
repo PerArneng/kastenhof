@@ -10,7 +10,7 @@ See README.md for how to run it, the controls and where to tune things. The note
 ## Rendering
 - The canvas `antialias` flag does nothing, because everything is drawn through the EffectComposer (bloom). The composer gets its own 4× MSAA render target in `js/render/scene.js`. Without it, the thin lane markings shimmer as the camera moves.
 - The diorama clips all geometry at the block edges (`renderer.clippingPlanes`). Overlays that must reach outside the block are drawn on the 2D canvas `#overlay2d`, projected from 3D each frame. The auto-mode path preview (`js/ui/pathPreview.js`) is one example.
-- Route highlight: hovering a row in the routes table draws that route's main (noise-free) path as floating arrows (`js/render/routeOverlay.js`). The arrows scale with zoom, so they keep a steady size on screen.
+- Route highlight: hovering a row in the routes table draws that route's main (noise-free) path as floating arrows (`js/render/routeOverlay.js`). Hovering the "Rutter" title shows all routes at once. The arrows scale with zoom, so they keep a steady size on screen.
 - Map labels are kept minimal on purpose. There are two E20 shields, one near each end of the motorway. There are no "86 Kastenhofsmotet" exit signs and no place-name pins (`LABELS` in `js/network/roads.js`).
 - The day backdrop gradient was darkened slightly (`TOD.day.backdrop`).
 

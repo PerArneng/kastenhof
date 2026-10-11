@@ -16,6 +16,10 @@ export function createControls({ world, onToggle, onHoverRoute = () => {}, onHov
     ctl.append('button').attr('aria-label', 'Fler bilar').attr('title', 'Shift: +5').text('+').on('click', (ev, r) => bump(r, ev.shiftKey ? 5 : 1));
     return tr;
   });
+  // Hovering the title highlights every route at once.
+  d3.select('#routes .rt-title')
+    .on('mouseenter', () => onHoverRoute(world.routes))
+    .on('mouseleave', () => onHoverRoute(null));
   function bump(r, delta) {
     const cur = r.rate;
     let next = cur + delta;
