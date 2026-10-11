@@ -11,6 +11,8 @@
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink);
   font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; -webkit-font-smoothing: antialiased; }
 #scene { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+#overlay2d { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; }
+.seg.hidden { display: none; }
 
 .glass { background: var(--glass); border: 1px solid var(--glass-brd); border-radius: 14px;
   backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4);

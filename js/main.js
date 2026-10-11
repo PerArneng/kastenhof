@@ -8,6 +8,8 @@ import { buildRoads } from './render/roads.js';
 import { buildLabels } from './render/labels.js';
 import { createVehicleRenderer } from './render/vehicles.js';
 import { createRouteOverlay } from './render/routeOverlay.js';
+import { createAutoCam } from './render/autoCam.js';
+import { createPathPreview } from './ui/pathPreview.js';
 import { createControls } from './ui/controls.js';
 
 const loadImage = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
@@ -27,6 +29,8 @@ async function main() {
   const vehicles = createVehicleRenderer(view.scene, net);
   const debug = buildDebug(view.scene, net);
   const routeOverlay = createRouteOverlay(view.scene, net, world.router, view);
+  const autoCam = createAutoCam(view);
+  const pathPreview = createPathPreview(document.getElementById('overlay2d'), view, autoCam);
 
   // Warm up so the map isn't empty when it first appears.
   for (let i = 0; i < 30 * 45; i++) world.step(CONFIG.sim.dt);
@@ -35,14 +39,21 @@ async function main() {
   const ui = createControls({
     world,
     onHoverRoute: (r) => routeOverlay.show(r),
+    onHoverAuto: (on) => pathPreview.show(on),
     onToggle(kind, value) {
       if (kind === 'tod') { view.setTimeOfDay(value); nightTarget = value === 'night' ? 1 : value === 'golden' ? 0.35 : 0; }
       if (kind === 'debug') debug.visible = value;
       if (kind === 'ref') terrain.setReference(value);
       if (kind === 'view') view.fitView(true);
       if (kind === 'hover') view.setHover(value);
+      if (kind === 'auto') autoCam.setEnabled(value);
+      if (kind === 'autoSpeed') autoCam.setSpeed(value);
     },
   });
+
+  // Any orbit / pan / zoom by the user hands the camera back to them.
+  view.controls.addEventListener('start', () => ui.setAuto(false));
+  ui.setAuto(true); // ambient dashboard: start flying
 
   document.getElementById('loading').classList.add('done');
   let last = performance.now(), simTime = 0;
@@ -62,13 +73,14 @@ async function main() {
     vehicles.update(world, simTime, ui.state.debug);
     terrain.update(now / 1000);
     routeOverlay.update(now / 1000);
-    view.controls.update();
+    pathPreview.update(now / 1000);
+    if (autoCam.enabled) autoCam.update(dtReal); else view.controls.update();
     ui.update(now);
     view.render();
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  window.kastenhof = { net, world, view }; // handy for tuning from the console
+  window.kastenhof = { net, world, view, autoCam }; // handy for tuning from the console
 }
 
 // Debug overlay: lane centrelines by type, stop lines and conflict points.

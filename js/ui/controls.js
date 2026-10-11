@@ -2,7 +2,7 @@
 // with −/+) and the HUD (stats, pause, speed, time of day, debug).
 import * as d3 from 'd3';
 
-export function createControls({ world, onToggle, onHoverRoute = () => {} }) {
+export function createControls({ world, onToggle, onHoverRoute = () => {}, onHoverAuto = () => {} }) {
   const rows = d3.select('#routes tbody').selectAll('tr').data(world.routes, (r) => r.id).join((enter) => {
     const tr = enter.append('tr')
       .on('mouseenter', function (ev, r) { d3.select(this).classed('hover', true); onHoverRoute(r); })
@@ -32,7 +32,7 @@ export function createControls({ world, onToggle, onHoverRoute = () => {} }) {
 
   // ----- HUD
   const speeds = [1, 2, 4, 8];
-  const state = { speed: 1, paused: false, tod: 'day', debug: false, ref: false, hover: true };
+  const state = { speed: 1, paused: false, tod: 'day', debug: false, ref: false, hover: true, auto: false, autoSpeed: 1 };
   d3.select('#seg-speed').selectAll('button').data(speeds).join('button').text((d) => `${d}×`)
     .classed('on', (d) => d === state.speed).on('click', (ev, d) => { state.speed = d; d3.selectAll('#seg-speed button').classed('on', (x) => x === d); });
   const tods = [['day', 'Dag'], ['golden', 'Kväll'], ['night', 'Natt']];
@@ -51,15 +51,33 @@ export function createControls({ world, onToggle, onHoverRoute = () => {} }) {
     onToggle('ref', state.ref);
   }
   const hov = d3.select('#btn-hover').on('click', () => toggleHover());
-  function toggleHover() { state.hover = !state.hover; hov.classed('on', state.hover); onToggle('hover', state.hover); }
-  d3.select('#btn-view').on('click', () => onToggle('view'));
+  function setHover(on) { state.hover = on; hov.classed('on', on); onToggle('hover', on); }
+  // Auto mode needs the drone hover, so turning the hover off ends auto mode.
+  function toggleHover() { if (state.hover && state.auto) setAuto(false); setHover(!state.hover); }
+  const autoBtn = d3.select('#btn-auto').on('click', () => setAuto(!state.auto))
+    .on('mouseenter', () => onHoverAuto(true)).on('mouseleave', () => onHoverAuto(false));
+  const autoSpeed = d3.select('#seg-autospeed');
+  autoSpeed.selectAll('button').data([1, 2, 4]).join('button').text((d) => `${d}×`)
+    .classed('on', (d) => d === state.autoSpeed).on('click', (ev, d) => {
+      state.autoSpeed = d; autoSpeed.selectAll('button').classed('on', (x) => x === d); onToggle('autoSpeed', d);
+    });
+  function setAuto(on) {
+    if (on === state.auto) return;
+    state.auto = on;
+    autoBtn.classed('on', on);
+    autoSpeed.classed('hidden', !on);
+    if (on && !state.hover) setHover(true);
+    onToggle('auto', on);
+  }
+  d3.select('#btn-view').on('click', () => { setAuto(false); onToggle('view'); });
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
     if (e.code === 'Space') { togglePause(); e.preventDefault(); }
     else if (e.key === 'd' || e.key === 'D') toggleDebug();
     else if (e.key === 'r' || e.key === 'R') toggleRef();
-    else if (e.key === 'v' || e.key === 'V') onToggle('view');
+    else if (e.key === 'v' || e.key === 'V') { setAuto(false); onToggle('view'); }
     else if (e.key === 'h' || e.key === 'H') toggleHover();
+    else if (e.key === 'a' || e.key === 'A') setAuto(!state.auto);
     else if (e.key === 'n' || e.key === 'N') setTod(state.tod === 'day' ? 'golden' : state.tod === 'golden' ? 'night' : 'day');
   });
 
@@ -75,5 +93,5 @@ export function createControls({ world, onToggle, onHoverRoute = () => {} }) {
       stClock.text(`${String(Math.floor(mins / 60) % 24).padStart(2, '0')}:${String(Math.floor(mins % 60)).padStart(2, '0')}`);
     }
   }
-  return { state, update };
+  return { state, update, setAuto };
 }

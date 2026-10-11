@@ -20,6 +20,7 @@
 </head>
 <body>
   <canvas id="scene"></canvas>
+  <canvas id="overlay2d"></canvas>
   <section id="routes" class="glass" aria-label="Rutter">
     <div class="rt-title">Rutter</div>
     <table>
@@ -44,6 +45,8 @@
       <div class="seg" id="seg-tod"></div>
       <button id="btn-debug" class="btn ghost" title="Debug overlay (D)">Debug</button>
       <button id="btn-ref" class="btn ghost" title="Reference overlay: map, then satellite (R)">Ref</button>
+      <button id="btn-auto" class="btn ghost" title="Autoläge: kameran flyger runt och visar trafiken (A). Håll muspekaren här för att se rutten.">Auto</button>
+      <div class="seg hidden" id="seg-autospeed" title="Kamerahastighet i autoläge"></div>
       <button id="btn-hover" class="btn ghost on" title="Drönarvy: kameran svävar sakta (H)">Drönare</button>
       <button id="btn-view" class="btn ghost" title="Reset view (V)">⤢</button>
     </div>

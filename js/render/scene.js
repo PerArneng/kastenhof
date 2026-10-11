@@ -95,7 +95,10 @@ export function createScene(canvas) {
   scene.fog = new THREE.Fog(0xc9dbe6, 5000, 12000);
 
   // Post
-  const composer = new EffectComposer(renderer);
+  // The canvas' own antialias doesn't apply once we render through the
+  // composer, so give its targets MSAA; otherwise the thin lane markings
+  // (sub-pixel when zoomed out) break up and shimmer as the camera moves.
+  const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 }));
   composer.addPass(new RenderPass(scene, camera));
   // Replace NaN/Inf and clamp extreme HDR values (e.g. specular glints) so a
   // single bad pixel can never be smeared over the whole screen by the bloom.
