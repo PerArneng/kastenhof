@@ -2,9 +2,11 @@
 // with −/+) and the HUD (stats, pause, speed, time of day, debug).
 import * as d3 from 'd3';
 
-export function createControls({ world, onToggle }) {
+export function createControls({ world, onToggle, onHoverRoute = () => {} }) {
   const rows = d3.select('#routes tbody').selectAll('tr').data(world.routes, (r) => r.id).join((enter) => {
-    const tr = enter.append('tr');
+    const tr = enter.append('tr')
+      .on('mouseenter', function (ev, r) { d3.select(this).classed('hover', true); onHoverRoute(r); })
+      .on('mouseleave', function () { d3.select(this).classed('hover', false); onHoverRoute(null); });
     const name = tr.append('td').attr('class', 'rt-name');
     name.append('div').text((r) => r.label);
     name.append('div').attr('class', 'rt-queue');
@@ -30,7 +32,7 @@ export function createControls({ world, onToggle }) {
 
   // ----- HUD
   const speeds = [1, 2, 4, 8];
-  const state = { speed: 1, paused: false, tod: 'day', debug: false, ref: false };
+  const state = { speed: 1, paused: false, tod: 'day', debug: false, ref: false, hover: true };
   d3.select('#seg-speed').selectAll('button').data(speeds).join('button').text((d) => `${d}×`)
     .classed('on', (d) => d === state.speed).on('click', (ev, d) => { state.speed = d; d3.selectAll('#seg-speed button').classed('on', (x) => x === d); });
   const tods = [['day', 'Dag'], ['golden', 'Kväll'], ['night', 'Natt']];
@@ -48,6 +50,8 @@ export function createControls({ world, onToggle }) {
     ref.classed('on', !!state.ref).text(state.ref === 'satellite' ? 'Ref: satellit' : state.ref === 'map' ? 'Ref: karta' : 'Ref');
     onToggle('ref', state.ref);
   }
+  const hov = d3.select('#btn-hover').on('click', () => toggleHover());
+  function toggleHover() { state.hover = !state.hover; hov.classed('on', state.hover); onToggle('hover', state.hover); }
   d3.select('#btn-view').on('click', () => onToggle('view'));
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
@@ -55,6 +59,7 @@ export function createControls({ world, onToggle }) {
     else if (e.key === 'd' || e.key === 'D') toggleDebug();
     else if (e.key === 'r' || e.key === 'R') toggleRef();
     else if (e.key === 'v' || e.key === 'V') onToggle('view');
+    else if (e.key === 'h' || e.key === 'H') toggleHover();
     else if (e.key === 'n' || e.key === 'N') setTod(state.tod === 'day' ? 'golden' : state.tod === 'golden' ? 'night' : 'day');
   });
 

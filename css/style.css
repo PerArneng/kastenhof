@@ -44,6 +44,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 #routes td { padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.06); vertical-align: middle; }
 #routes tr:last-child td { border-bottom: 0; }
 .rt-name { padding-right: 14px !important; font-weight: 600; white-space: nowrap; }
+#routes tbody tr { cursor: default; }
+#routes tbody tr.hover td { background: rgba(255,255,255,0.06); }
 .rt-queue { font-size: 10px; font-weight: 500; color: #f2c94c; }
 .rt-queue:empty { display: none; }
 .stepper { display: flex; align-items: center; justify-content: center; gap: 6px; }

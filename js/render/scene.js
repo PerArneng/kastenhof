@@ -201,5 +201,26 @@ export function createScene(canvas) {
   setTimeOfDay('day');
   resize();
   fitView();
-  return { renderer, scene, camera, controls, composer, sun, hemi, state, setTimeOfDay, fitView, render: () => composer.render() };
+  // Drone hover: a slow, mostly vertical drift added to the camera only while
+  // rendering, so OrbitControls never sees it. A few mismatched sines never
+  // quite repeat; amplitude scales with zoom and eases in/out when toggled.
+  let hoverOn = true, hoverK = 1, lastT = performance.now();
+  const bob = new THREE.Vector3(), side = new THREE.Vector3();
+  function render() {
+    const now = performance.now(), t = now / 1000;
+    hoverK += ((hoverOn ? 1 : 0) - hoverK) * Math.min(1, ((now - lastT) / 1000) * 0.8);
+    lastT = now;
+    if (hoverK > 0.001) {
+      const amp = camera.position.distanceTo(controls.target) * 0.0035 * hoverK;
+      side.subVectors(controls.target, camera.position).cross(camera.up).normalize();
+      bob.set(0, amp * (0.6 * Math.sin(t * 0.53) + 0.3 * Math.sin(t * 0.31 + 1.7) + 0.1 * Math.sin(t * 0.97 + 0.4)), 0)
+        .addScaledVector(side, amp * 0.35 * Math.sin(t * 0.23 + 0.9));
+      camera.position.add(bob);
+      composer.render();
+      camera.position.sub(bob);
+    } else composer.render();
+  }
+  const setHover = (on) => { hoverOn = on; };
+
+  return { renderer, scene, camera, controls, composer, sun, hemi, state, setTimeOfDay, fitView, setHover, render };
 }

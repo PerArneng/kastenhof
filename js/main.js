@@ -7,6 +7,7 @@ import { buildTerrain } from './render/terrain.js';
 import { buildRoads } from './render/roads.js';
 import { buildLabels } from './render/labels.js';
 import { createVehicleRenderer } from './render/vehicles.js';
+import { createRouteOverlay } from './render/routeOverlay.js';
 import { createControls } from './ui/controls.js';
 
 const loadImage = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
@@ -25,6 +26,7 @@ async function main() {
   buildLabels(view.scene, net);
   const vehicles = createVehicleRenderer(view.scene, net);
   const debug = buildDebug(view.scene, net);
+  const routeOverlay = createRouteOverlay(view.scene, net, world.router, view);
 
   // Warm up so the map isn't empty when it first appears.
   for (let i = 0; i < 30 * 45; i++) world.step(CONFIG.sim.dt);
@@ -32,11 +34,13 @@ async function main() {
   let nightK = 0, nightTarget = 0;
   const ui = createControls({
     world,
+    onHoverRoute: (r) => routeOverlay.show(r),
     onToggle(kind, value) {
       if (kind === 'tod') { view.setTimeOfDay(value); nightTarget = value === 'night' ? 1 : value === 'golden' ? 0.35 : 0; }
       if (kind === 'debug') debug.visible = value;
       if (kind === 'ref') terrain.setReference(value);
       if (kind === 'view') view.fitView(true);
+      if (kind === 'hover') view.setHover(value);
     },
   });
 
@@ -57,6 +61,7 @@ async function main() {
     roads.furniture.userData.setNight(nightK);
     vehicles.update(world, simTime, ui.state.debug);
     terrain.update(now / 1000);
+    routeOverlay.update(now / 1000);
     view.controls.update();
     ui.update(now);
     view.render();
