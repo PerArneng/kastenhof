@@ -1,64 +1,32 @@
-// Overlay UI built with D3: a "cars per minute" chip with −/+ at every road
-// entering the view, plus the HUD (stats, pause, speed, time of day, debug).
+// Overlay UI built with D3: the routes table (cars per minute per route,
+// with −/+) and the HUD (stats, pause, speed, time of day, debug).
 import * as d3 from 'd3';
-import * as THREE from 'three';
 
-export function createControls({ world, camera, onToggle }) {
-  const chips = d3.select('#chips');
-  const data = world.entries.map((e) => ({ e, anchor: new THREE.Vector3(e.anchor[0], 3, e.anchor[1]) }));
-  const sel = chips.selectAll('div.chip').data(data, (d) => d.e.id).join((enter) => {
-    const c = enter.append('div').attr('class', (d) => `chip${d.e.motorway ? ' motorway' : ''}`);
-    c.append('div').attr('class', 'name').text((d) => d.e.label);
-    const row = c.append('div').attr('class', 'row');
-    row.append('button').attr('aria-label', 'Färre bilar').text('−').on('click', (ev, d) => bump(d, ev.shiftKey ? -5 : -1));
-    row.append('div').attr('class', 'rate');
-    row.append('button').attr('aria-label', 'Fler bilar').text('+').on('click', (ev, d) => bump(d, ev.shiftKey ? 5 : 1));
-    c.append('div').attr('class', 'unit').text('cars / min');
-    c.append('div').attr('class', 'queue');
-    return c;
+export function createControls({ world, onToggle }) {
+  const rows = d3.select('#routes tbody').selectAll('tr').data(world.routes, (r) => r.id).join((enter) => {
+    const tr = enter.append('tr');
+    const name = tr.append('td').attr('class', 'rt-name');
+    name.append('div').text((r) => r.label);
+    name.append('div').attr('class', 'rt-queue');
+    const ctl = tr.append('td').attr('class', 'rt-rate').append('div').attr('class', 'stepper');
+    ctl.append('button').attr('aria-label', 'Färre bilar').attr('title', 'Shift: −5').text('−').on('click', (ev, r) => bump(r, ev.shiftKey ? -5 : -1));
+    ctl.append('span').attr('class', 'rate');
+    ctl.append('button').attr('aria-label', 'Fler bilar').attr('title', 'Shift: +5').text('+').on('click', (ev, r) => bump(r, ev.shiftKey ? 5 : 1));
+    return tr;
   });
-  function bump(d, delta) {
-    const cur = d.e.rate;
+  function bump(r, delta) {
+    const cur = r.rate;
     let next = cur + delta;
     if (delta < 0 && cur <= 1 && cur > 0) next = cur === 1 ? 0.5 : 0;
     else if (delta > 0 && cur < 1) next = cur === 0 ? 0.5 : 1;
-    world.setRate(d.e.id, Math.max(0, Math.min(90, next)));
+    world.setRate(r.id, Math.max(0, Math.min(90, next)));
     refreshText();
   }
   function refreshText() {
-    sel.select('.rate').text((d) => (d.e.rate % 1 ? d.e.rate.toFixed(1) : d.e.rate));
-    sel.select('.queue').text((d) => (d.e.queue > 0 ? `${d.e.queue} väntar` : ''));
+    rows.select('.rate').text((r) => (r.rate % 1 ? r.rate.toFixed(1) : r.rate));
+    rows.select('.rt-queue').text((r) => (r.queue > 0 ? `${r.queue} väntar vid infarten` : ''));
   }
   refreshText();
-
-  const v = new THREE.Vector3();
-  function position() {
-    const W = window.innerWidth, H = window.innerHeight;
-    const top = (document.getElementById('hud')?.getBoundingClientRect().bottom || 0) + 46;
-    const m = 64;
-    for (const d of data) {
-      v.copy(d.anchor).project(camera);
-      d.behind = v.z > 1;
-      d.x = Math.max(m, Math.min(W - m, (v.x * 0.5 + 0.5) * W));
-      d.y = Math.max(top, Math.min(H - 40, (-v.y * 0.5 + 0.5) * H));
-    }
-    // push overlapping chips apart (a few relaxation passes)
-    const cw = 124, ch = 74;
-    for (let it = 0; it < 12; it++) for (let i = 0; i < data.length; i++) for (let j = i + 1; j < data.length; j++) {
-      const a = data[i], b = data[j];
-      const ox = cw - Math.abs(a.x - b.x), oy = ch - Math.abs(a.y - b.y);
-      if (ox > 0 && oy > 0) {
-        if (ox < oy) { const s = (a.x < b.x ? -1 : 1) * ox / 2; a.x += s; b.x -= s; }
-        else { const s = (a.y < b.y ? -1 : 1) * oy / 2; a.y += s; b.y -= s; }
-        for (const c of [a, b]) { c.x = Math.max(m, Math.min(W - m, c.x)); c.y = Math.max(top, Math.min(H - 40, c.y)); }
-      }
-    }
-    sel.each(function (d) {
-      this.style.left = `${Math.max(m, Math.min(W - m, d.x))}px`;
-      this.style.top = `${Math.max(top, Math.min(H - 40, d.y))}px`;
-      this.style.opacity = d.behind ? 0 : 1;
-    });
-  }
 
   // ----- HUD
   const speeds = [1, 2, 4, 8];
@@ -93,7 +61,6 @@ export function createControls({ world, camera, onToggle }) {
   const stVeh = d3.select('#st-veh'), stFlow = d3.select('#st-flow'), stClock = d3.select('#st-clock');
   let lastStat = 0;
   function update(now) {
-    position();
     if (now - lastStat > 400) {
       lastStat = now;
       refreshText();

@@ -49,24 +49,13 @@ export const CONFIG = {
 
   truckShare: { motorway: 0.12, other: 0.035 },
 
-  // Spawn rates (vehicles / minute) per entry. E20 is the busy one.
-  rates: {
-    E20E: 24, E20W: 22, SLV: 5, DAG: 3, KAST: 1, HED: 4, HAR: 3, LAG: 1, JUT: 1, P: 1,
-  },
-
-  // Origin → destination weights. Unreachable pairs are dropped automatically.
-  od: {
-    E20E: { E20E: 86, HED: 5, HAR: 3, SLV: 2, DAG: 2, P: 1, LAG: 0.5, JUT: 0.5 },
-    E20W: { E20W: 90, DAG: 3, SLV: 3, KAST: 1, P: 1, LAG: 1, JUT: 1 },
-    SLV:  { E20W: 15, E20E: 30, HED: 18, HAR: 12, DAG: 14, SLV: 0, KAST: 3, P: 6, LAG: 6, JUT: 4 },
-    DAG:  { E20W: 15, E20E: 30, SLV: 30, HED: 14, HAR: 8, KAST: 5, P: 6, LAG: 4, JUT: 3 },
-    KAST: { E20W: 15, DAG: 35, SLV: 30, E20E: 15, HED: 10, HAR: 5, P: 5 },
-    HED:  { E20W: 15, E20E: 35, SLV: 30, DAG: 14, HAR: 8, P: 6, LAG: 4, JUT: 3 },
-    HAR:  { E20W: 15, E20E: 35, SLV: 28, HED: 12, DAG: 12, P: 5, LAG: 4, JUT: 4 },
-    LAG:  { E20W: 15, SLV: 40, E20E: 25, HED: 12, DAG: 10, HAR: 6, JUT: 7 },
-    JUT:  { E20W: 15, SLV: 35, E20E: 25, HED: 12, DAG: 10, HAR: 6, LAG: 12 },
-    P:    { E20W: 15, SLV: 40, E20E: 25, HED: 15, DAG: 12, HAR: 8 },
-  },
+  // Traffic is defined as routes: an origin (entry id, see the boundary
+  // labels in roads.js) and a destination (exit id), each with its own rate
+  // in vehicles per minute. Each car follows the fastest path between them,
+  // with some per-driver variation. Add more routes here as needed.
+  routes: [
+    { id: 'GBG-ALS', label: 'Göteborg → Alingsås', from: 'E20E', to: 'E20E', rate: 24 },
+  ],
 
   routing: {
     noise: 0.18,            // per-driver lognormal perception noise on link times

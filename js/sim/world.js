@@ -27,10 +27,14 @@ export class World {
     this.stats = { spawned: 0, exited: 0, exitTimes: [], travel: [] };
     for (const p of net.paths) { p.vehicles = []; p.committed = new Set(); p.accelNb = -1; }
     for (const p of net.paths) if (p.kind === 'accel') net.paths[p.left].accelNb = p.id;
-    this.entries = Object.values(net.entries).map((e) => ({
-      ...e, rate: CONFIG.rates[e.id] ?? 1, queue: 0, nextT: 0, spawned: 0,
-    }));
-    for (const e of this.entries) e.nextT = this.t + this.expSample(e.rate);
+    this.routes = CONFIG.routes.map((r) => ({
+      ...r, entry: net.entries[r.from], queue: 0, nextT: 0, spawned: 0,
+    })).filter((r) => {
+      const ok = r.entry && this.router.reach[r.from]?.has(r.to);
+      if (!ok) console.warn(`route ${r.id}: no path from ${r.from} to ${r.to}`);
+      return ok;
+    });
+    for (const r of this.routes) r.nextT = this.t + this.expSample(r.rate);
     this.listeners = new Set();
   }
 
@@ -40,10 +44,10 @@ export class World {
   }
 
   setRate(id, rate) {
-    const e = this.entries.find((x) => x.id === id);
-    if (!e) return;
-    e.rate = Math.max(0, Math.round(rate * 2) / 2);
-    e.nextT = this.t + this.expSample(e.rate);
+    const r = this.routes.find((x) => x.id === id);
+    if (!r) return;
+    r.rate = Math.max(0, Math.round(rate * 2) / 2);
+    r.nextT = this.t + this.expSample(r.rate);
   }
 
   // ------------------------------------------------------------------ step
@@ -315,23 +319,20 @@ export class World {
 
   // --------------------------------------------------------------- spawning
   spawn() {
-    for (const e of this.entries) {
-      while (this.t >= e.nextT) {
-        e.queue = Math.min(CONFIG.sim.maxQueue, e.queue + 1);
-        e.nextT += this.expSample(e.rate);
+    for (const rt of this.routes) {
+      while (this.t >= rt.nextT) {
+        rt.queue = Math.min(CONFIG.sim.maxQueue, rt.queue + 1);
+        rt.nextT += this.expSample(rt.rate);
       }
-      if (e.queue > 0 && this.vehicles.length < CONFIG.sim.maxVehicles) {
-        if (this.trySpawn(e)) e.queue--;
+      if (rt.queue > 0 && this.vehicles.length < CONFIG.sim.maxVehicles) {
+        if (this.trySpawn(rt)) { rt.queue--; rt.spawned++; }
       }
     }
   }
 
-  trySpawn(e) {
+  trySpawn(rt) {
     const paths = this.net.paths;
-    const reach = this.router.reach[e.id];
-    const od = Object.entries(CONFIG.od[e.id] || {}).filter(([k, w]) => w > 0 && reach.has(k));
-    if (!od.length) return true;
-    const dest = pickWeighted(this.rand, od);
+    const e = rt.entry, dest = rt.to;
     const lanes = e.lanes.slice();
     if (lanes.length > 1 && this.rand() > 0.6) lanes.reverse();
     const motorway = !!e.motorway;
@@ -366,13 +367,12 @@ export class World {
         path: L, s: sSpawn, v: vs, acc: 0, accFree: 0, v0: vDes, route, ri: 0, dest, seed,
         color: pickWeighted(r, truck ? TRAILER_COLORS : CAR_COLORS), cabColor: pickWeighted(r, CAR_COLORS),
         commit: null, waitT: 0, age: 0, lat: 0, lat0: 0, latT: 0, lcCool: 3, lcSignal: null, lcCount: 0,
-        ind: 0, brake: false, yielding: false, exitSoon: false, origin: e.id, idx: 0,
+        ind: 0, brake: false, yielding: false, exitSoon: false, origin: e.id, routeId: rt.id, idx: 0,
       };
       L.vehicles.push(v);
       this.vehicles.push(v);
       this.updateExitSoon(v);
       this.stats.spawned++;
-      e.spawned++;
       return true;
     }
     return false;

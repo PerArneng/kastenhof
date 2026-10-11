@@ -9,10 +9,10 @@ open http://localhost:8000
 node test/selftest.mjs 20 1.5   # headless sim check: overlaps, gridlock, throughput
 ```
 
-Controls: drag to orbit, right-drag to pan, scroll to zoom towards the point under the mouse. `Space` pauses, `D` turns on the debug overlay (lanes, conflict points, vehicle states), `R` cycles the reference overlay (Google map → satellite photo → off), `N` cycles day / evening / night, and `V` resets the view. The −/+ chips at each entry change the cars per minute; hold Shift to step by 5.
+Controls: drag to orbit, right-drag to pan, scroll to zoom towards the point under the mouse. `Space` pauses, `D` turns on the debug overlay (lanes, conflict points, vehicle states), `R` cycles the reference overlay (Google map → satellite photo → off), `N` cycles day / evening / night, and `V` resets the view. The routes table (top right) lists each route with its cars per minute; −/+ change it, hold Shift to step by 5.
 
 ## Where to tune
-- `js/config.js`: speed limits, spawn rates, origin→destination weights, gap acceptance, driver model, lane-change parameters.
+- `js/config.js`: speed limits, routes (origin, destination and cars per minute; currently only Göteborg → Alingsås on E20), gap acceptance, driver model, lane-change parameters.
 - `js/network/traces.js`: road centrelines in map pixels, auto-snapped to the reference image.
 - `tools/satellite.py`: regenerates `references/satellite-map.webp` (satellite warped onto the map) and `references/landcover.png` (forest cover used for tree placement). Run it with `uv run --with numpy --with pillow --with scipy python tools/satellite.py`.
 - `js/network/roads.js`: topology and junction rules (`priority` = väjningsplikt for `minor` legs, `exit` = utfartsregeln, `right` = högerregeln, `roundabout`).

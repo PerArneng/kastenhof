@@ -36,22 +36,22 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 .seg button + button { border-left: 1px solid var(--glass-brd); }
 .seg button.on { background: rgba(255,255,255,0.16); color: var(--ink); }
 
-#chips { position: fixed; inset: 0; pointer-events: none; }
-.chip { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; display: flex; flex-direction: column; align-items: center;
-  padding: 6px 8px 7px; min-width: 112px; border-radius: 12px; background: rgba(14, 20, 26, 0.62); border: 1px solid rgba(255,255,255,0.16);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 6px 18px rgba(0,0,0,0.3); user-select: none; transition: opacity .2s; }
-.chip.motorway { border-color: rgba(127, 209, 174, 0.55); }
-.chip .name { font-size: 10px; font-weight: 600; letter-spacing: 0.6px; color: var(--ink-dim); text-transform: uppercase; white-space: nowrap; }
-.chip.motorway .name { color: #a9ead0; }
-.chip .row { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
-.chip .rate { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 28px; text-align: center; }
-.chip .unit { font-size: 10px; color: var(--ink-dim); margin-top: -1px; }
-.chip button { appearance: none; width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.22);
+#routes { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px; padding: 10px 12px 8px; min-width: 260px; }
+.rt-title { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+#routes table { border-collapse: collapse; width: 100%; font-size: 13px; }
+#routes th { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-dim); text-align: left; padding: 4px 0 6px; border-bottom: 1px solid var(--glass-brd); }
+#routes th.num { text-align: center; }
+#routes td { padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.06); vertical-align: middle; }
+#routes tr:last-child td { border-bottom: 0; }
+.rt-name { padding-right: 14px !important; font-weight: 600; white-space: nowrap; }
+.rt-queue { font-size: 10px; font-weight: 500; color: #f2c94c; }
+.rt-queue:empty { display: none; }
+.stepper { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.stepper .rate { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 30px; text-align: center; }
+.stepper button { appearance: none; width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.22);
   background: rgba(255,255,255,0.08); color: var(--ink); font: 700 15px/1 Inter, system-ui, sans-serif; cursor: pointer; display: grid; place-items: center; padding: 0; }
-.chip button:hover { background: rgba(255,255,255,0.2); }
-.chip button:active { transform: scale(0.94); }
-.chip .queue { font-size: 10px; color: #f2c94c; height: 12px; margin-top: 1px; }
-.chip .arrow { position: absolute; width: 8px; height: 8px; background: inherit; border: inherit; transform: rotate(45deg); }
+.stepper button:hover { background: rgba(255,255,255,0.2); }
+.stepper button:active { transform: scale(0.94); }
 
 #legend { position: fixed; left: 16px; bottom: 16px; padding: 12px 14px; font-size: 12px; max-width: 340px; }
 #legend.hidden { display: none; }
@@ -70,7 +70,6 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 @media (max-width: 720px) {
   #hud { top: 8px; left: 8px; right: 8px; gap: 10px; padding: 8px 10px; }
   .stats { gap: 10px; }
-  .chip { min-width: 92px; padding: 4px 6px 5px; }
-  .chip .rate { font-size: 15px; }
-  #legend { left: 8px; right: 8px; bottom: 8px; max-width: none; }
+  #routes { top: auto; bottom: 8px; left: 8px; right: 8px; min-width: 0; }
+  #legend { left: 8px; right: 8px; bottom: 110px; max-width: none; }
 }

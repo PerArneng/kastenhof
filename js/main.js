@@ -31,7 +31,7 @@ async function main() {
 
   let nightK = 0, nightTarget = 0;
   const ui = createControls({
-    world, camera: view.camera,
+    world,
     onToggle(kind, value) {
       if (kind === 'tod') { view.setTimeOfDay(value); nightTarget = value === 'night' ? 1 : value === 'golden' ? 0.35 : 0; }
       if (kind === 'debug') debug.visible = value;
