@@ -55,6 +55,8 @@ export const CONFIG = {
   // with some per-driver variation. Add more routes here as needed.
   routes: [
     { id: 'GBG-ALS', label: 'Göteborg → Alingsås', from: 'E20E', to: 'E20E', rate: 24 },
+    // E20 westbound straight through, past Kastenhofsmotet.
+    { id: 'ALS-GBG', label: 'Alingsås → Göteborg', from: 'E20W', to: 'E20W', rate: 24 },
     // Avfart 86 → roundabout → Södra Långvägen → Dageborgsleden north under E20.
     { id: 'GBG-STK', label: 'Göteborg → Stenkullen', from: 'E20E', to: 'DAG', rate: 3 },
     // Dageborgsleden south → Påfart 86 (westbound ramp) → E20 towards Göteborg.
