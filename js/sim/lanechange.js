@@ -13,9 +13,12 @@ export function laneNeighbours(world, P, s, T) {
     if (w.s >= sT) { const g = w.s - w.len - sT; if (g < gL) { gL = g; leader = w; } }
     else { const g = sT - w.s; if (g < gF) { gF = g; follower = w; } }
   }
-  if (!leader && T.next.length) {
-    const N = paths[T.next[0]];
-    for (const w of N.vehicles) { const g = T.len - sT + w.s - w.len; if (g < gL) { gL = g; leader = w; } }
+  // Past the end of the lane, a leader can be on any successor (e.g. an off-ramp).
+  if (!leader) {
+    for (const nid of T.next) {
+      const N = paths[nid];
+      for (const w of N.vehicles) { const g = T.len - sT + w.s - w.len; if (g < gL) { gL = g; leader = w; } }
+    }
   }
   if (!follower) {
     for (const pid of T.prev) {
