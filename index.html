@@ -37,6 +37,8 @@
     <div class="stats">
       <div class="stat"><span class="k">Fordon</span><span class="v" id="st-veh">0</span></div>
       <div class="stat"><span class="k">Flöde</span><span class="v" id="st-flow">0</span><span class="u">/min</span></div>
+      <div class="stat" title="Medelrestid för bilar som kört genom korsningen, senaste 2 min"><span class="k">Restid</span><span class="v" id="st-travel">–</span><span class="u">s</span></div>
+      <div class="stat" title="Medeltid stillastående för bilar som kört genom korsningen, senaste 2 min"><span class="k">Väntetid</span><span class="v" id="st-stop">–</span><span class="u">s</span></div>
       <div class="stat"><span class="k">Klocka</span><span class="v" id="st-clock">07:30</span></div>
     </div>
     <div class="controls">
@@ -51,6 +53,8 @@
       <button id="btn-view" class="btn ghost" title="Reset view (V)">⤢</button>
     </div>
   </header>
+
+  <section id="graph" class="glass" aria-label="Restid över tid"></section>
 
   <aside id="legend" class="glass hidden">
     <div class="lg-title">Trafikregler i modellen</div>
@@ -67,6 +71,12 @@
   <button id="btn-ui" class="glass" title="Dölj menyer (M)" aria-label="Dölj menyer" aria-pressed="true">
     <svg class="ic-show" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
     <svg class="ic-hide" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.1 3.9M6.6 6.6C3.9 8.3 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+  </button>
+
+  <!-- Floats next to the junction under test (J_CW); shows the layout you switch TO. -->
+  <button id="btn-junction" class="glass" title="Byt till cirkulationsplats (C)" aria-label="Byt till cirkulationsplats" aria-pressed="false">
+    <svg class="ic-rb" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="6.5"/><path d="M12 1v4.5M12 18.5V23M1 12h4.5M18.5 12H23"/><path d="M14.2 3.9l2.6 1.6-1.6 2.6"/><path d="M9.8 20.1l-2.6-1.6 1.6-2.6"/></svg>
+    <svg class="ic-cross" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1.5v21M1.5 12h21"/></svg>
   </button>
 
   <div id="loading"><div class="spinner"></div><div>Bygger Kastenhof…</div></div>

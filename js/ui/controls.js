@@ -1,6 +1,7 @@
 // Overlay UI built with D3: the routes table (cars per minute per route,
 // with −/+) and the HUD (stats, pause, speed, time of day, debug).
 import * as d3 from 'd3';
+import { createTravelGraph } from './travelGraph.js';
 
 export function createControls({ world, onToggle, onHoverRoute = () => {}, onHoverAuto = () => {} }) {
   const rows = d3.select('#routes tbody').selectAll('tr').data(world.routes, (r) => r.id).join((enter) => {
@@ -99,17 +100,25 @@ export function createControls({ world, onToggle, onHoverRoute = () => {}, onHov
     else if (e.key === 'h' || e.key === 'H') toggleHover();
     else if (e.key === 'a' || e.key === 'A') setAuto(!state.auto);
     else if (e.key === 'm' || e.key === 'M') setUi(!state.ui);
+    else if (e.key === 'c' || e.key === 'C') onToggle('junction');
     else if (e.key === 'n' || e.key === 'N') setTod(state.tod === 'day' ? 'golden' : state.tod === 'golden' ? 'night' : 'day');
   });
 
+  const graph = createTravelGraph(d3.select('#graph'), world);
+  const stTravel = d3.select('#st-travel'), stStop = d3.select('#st-stop');
+  let lastGraph = 0;
   const stVeh = d3.select('#st-veh'), stFlow = d3.select('#st-flow'), stClock = d3.select('#st-clock');
   let lastStat = 0;
   function update(now) {
+    if (now - lastGraph > 1000) { lastGraph = now; graph.draw(); }
     if (now - lastStat > 400) {
       lastStat = now;
       refreshText();
       stVeh.text(world.vehicles.length);
       stFlow.text(Math.round(world.throughputPerMin()));
+      const avg = world.recentAvg();
+      stTravel.text(Number.isFinite(avg.travel) ? Math.round(avg.travel) : '–');
+      stStop.text(Number.isFinite(avg.stop) ? avg.stop.toFixed(1) : '–');
       const mins = 7 * 60 + 30 + world.t / 60;
       stClock.text(`${String(Math.floor(mins / 60) % 24).padStart(2, '0')}:${String(Math.floor(mins % 60)).padStart(2, '0')}`);
     }

@@ -65,7 +65,8 @@ function chevronGeometry() {
   return g;
 }
 
-export function createRouteOverlay(scene, net, router, view) {
+// `getNet` / `getRouter` return the live network and router (the layout can change).
+export function createRouteOverlay(scene, getNet, getRouter, view) {
   const group = new THREE.Group();
   group.visible = false;
   group.renderOrder = 12;
@@ -79,10 +80,10 @@ export function createRouteOverlay(scene, net, router, view) {
   const arrowGeo = chevronGeometry();
 
   const cache = new Map();
-  let cur = [];
+  let cur = [], shown = null;
 
   function build(route) {
-    const pts = routePolyline(net, router, route);
+    const pts = routePolyline(getNet(), getRouter(), route);
     if (!pts) return null;
     const m = measure(pts);
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map((p) => new THREE.Vector3(...p))), lineMat);
@@ -100,8 +101,17 @@ export function createRouteOverlay(scene, net, router, view) {
   const pt = {};
 
   return {
+    // Forget cached paths after the road layout changes, and redraw what was shown.
+    reset() {
+      const again = shown;
+      this.show(null);
+      for (const c of cache.values()) if (c) { c.g.children[0].geometry.dispose(); c.arrows.dispose(); }
+      cache.clear();
+      this.show(again);
+    },
     // Show one route, a list of routes (e.g. all of them), or nothing (null).
     show(routes) {
+      shown = routes;
       for (const c of cur) group.remove(c.g);
       cur = [];
       for (const route of routes ? [].concat(routes) : []) {

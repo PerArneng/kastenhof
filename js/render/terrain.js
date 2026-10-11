@@ -82,7 +82,9 @@ function classify(img) {
   return out;
 }
 
-export function buildTerrain(scene, net, refImage, { landcover, satellite } = {}) {
+// `nets`: every road layout that can be shown, so trees and verges clear all of them.
+export function buildTerrain(scene, nets, refImage, { landcover, satellite } = {}) {
+  const allPaths = [].concat(...[].concat(nets).map((n) => n.paths));
   const cls = classify(refImage);
   // Inside the satellite footprint, forests follow the real tree cover; the
   // noise field fills in the rest of the map.
@@ -100,7 +102,7 @@ export function buildTerrain(scene, net, refImage, { landcover, satellite } = {}
   // Spatial hash of drivable network for keep-out
   const cell = 8, grid = new Map();
   const key = (x, z) => `${Math.floor(x / cell)},${Math.floor(z / cell)}`;
-  for (const p of net.paths) for (let i = 0; i < p.n; i += 2) {
+  for (const p of allPaths) for (let i = 0; i < p.n; i += 2) {
     const k = key(p.x[i], p.z[i]); let a = grid.get(k); if (!a) grid.set(k, (a = [])); a.push(p.x[i], p.z[i], p.width);
   }
   const nearRoad = (x, z, pad) => {
@@ -155,12 +157,12 @@ export function buildTerrain(scene, net, refImage, { landcover, satellite } = {}
   const tx = (x) => (x / (MAP_HALF[0] * 2) + 0.5) * TW, tz = (z) => (z / (MAP_HALF[1] * 2) + 0.5) * TH;
   const line = d3.line().x((p) => tx(p[0])).y((p) => tz(p[1])).curve(d3.curveCatmullRom).context(ctx);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  for (const p of net.paths) {
+  for (const p of allPaths) {
     if (p.kind === 'ring') continue;
     const pts = p.points().filter((_, i) => i % 3 === 0);
     ctx.beginPath(); line(pts); ctx.strokeStyle = 'rgba(120,140,96,0.95)'; ctx.lineWidth = (p.width + 9) * TW / (MAP_HALF[0] * 2); ctx.stroke();
   }
-  for (const p of net.paths) {
+  for (const p of allPaths) {
     if (p.kind === 'ring') continue;
     const pts = p.points().filter((_, i) => i % 3 === 0);
     ctx.beginPath(); line(pts); ctx.strokeStyle = 'rgba(132,128,112,0.9)'; ctx.lineWidth = (p.width + 2.5) * TW / (MAP_HALF[0] * 2); ctx.stroke();

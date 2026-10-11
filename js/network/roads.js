@@ -101,6 +101,15 @@ export const NETWORK = {
   ],
 };
 
+// The what-if under test: Dageborgsleden / westbound ramps (J_CW) as a
+// roundabout instead of today's priority crossing. Toggled live in the UI.
+export const TOGGLE_JUNCTION = 'J_CW';
+const J_CW_ROUNDABOUT = { id: 'J_CW', type: 'roundabout', center: [872, 479], radius: 30, legTrim: 46 };
+export const LAYOUTS = {
+  cross: NETWORK,
+  roundabout: { ...NETWORK, junctions: NETWORK.junctions.map((j) => (j.id === TOGGLE_JUNCTION ? J_CW_ROUNDABOUT : j)) },
+};
+
 // Labels, signs and points of interest drawn on the map (map pixels).
 export const LABELS = {
   roads: [

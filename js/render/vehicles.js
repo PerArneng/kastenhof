@@ -38,7 +38,7 @@ function lightGeometries() {
 }
 
 export function createVehicleRenderer(scene, net) {
-  const paths = net.paths;
+  let paths = net.paths; // follows world.net, which changes when the layout is switched
   const group = new THREE.Group();
   scene.add(group);
   const paint = new THREE.MeshPhysicalMaterial({ roughness: 0.34, metalness: 0.4, clearcoat: 0.7, clearcoatRoughness: 0.22 });
@@ -112,6 +112,7 @@ export function createVehicleRenderer(scene, net) {
   }
 
   function update(world, time, debug) {
+    paths = world.net.paths;
     let ci = 0, ti = 0, li = 0;
     const blinkOn = (time % 0.75) < 0.42;
     for (const v of world.vehicles) {

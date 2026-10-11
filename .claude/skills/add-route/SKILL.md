@@ -58,6 +58,11 @@ The second command prints each road sequence the router picks, and how often:
 
 (`RB` is the roundabout. Junction connectors aren't listed.)
 
+J_CW (Dageborgsleden / westbound ramps) can be switched to a roundabout in the
+UI. For a route through it, also check that layout:
+`check-route.mjs E20W DAG --layout roundabout` (its ring shows as `J_CW`), and run
+the self-test with `roundabout` as a third argument.
+
 - **It matches the drawn line.** Go on to step 3. A small share, say under 10%, on a
   sensible alternative is fine and is what the noise is for. Mention it.
 - **It's a clearly different path.** Don't add the route quietly. Tell the user

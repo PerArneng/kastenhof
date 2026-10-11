@@ -11,29 +11,49 @@ import { createRouteOverlay } from './render/routeOverlay.js';
 import { createAutoCam } from './render/autoCam.js';
 import { createPathPreview } from './ui/pathPreview.js';
 import { createControls } from './ui/controls.js';
+import { createJunctionToggle } from './ui/junctionToggle.js';
+import { LAYOUTS, TOGGLE_JUNCTION } from './network/roads.js';
 
 const loadImage = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
 
 async function main() {
-  const net = buildNetwork();
-  const world = new World(net, { seed: (Date.now() & 0xffff) | 1 });
+  // Both road layouts are built up front; the junction toggle swaps between them.
+  const nets = { cross: buildNetwork(LAYOUTS.cross), roundabout: buildNetwork(LAYOUTS.roundabout) };
+  const net = nets.cross;
+  const world = new World(net, { seed: (Date.now() & 0xffff) | 1, layout: 'cross' });
   const view = createScene(document.getElementById('scene'));
   await nextFrame();
   const [ref, landcover, satellite] = await Promise.all([
     loadImage('references/kastenhof.png'), loadImage('references/landcover.png'), loadImage('references/satellite-map.webp'),
   ]);
-  const terrain = buildTerrain(view.scene, net, ref, { landcover, satellite });
-  const roads = buildRoads(view.scene, net);
+  const terrain = buildTerrain(view.scene, Object.values(nets), ref, { landcover, satellite });
+  const roadsBy = {}, debugBy = {};
+  for (const [k, n] of Object.entries(nets)) { roadsBy[k] = buildRoads(view.scene, n); debugBy[k] = buildDebug(view.scene, n); }
+  let roads = roadsBy.cross, debug = debugBy.cross;
+  roadsBy.roundabout.group.visible = roadsBy.roundabout.furniture.visible = false;
   buildLabels(view.scene, net);
   const vehicles = createVehicleRenderer(view.scene, net);
-  const debug = buildDebug(view.scene, net);
-  const routeOverlay = createRouteOverlay(view.scene, net, world.router, view);
+  const routeOverlay = createRouteOverlay(view.scene, () => world.net, () => world.router, view);
   const autoCam = createAutoCam(view);
   const pathPreview = createPathPreview(document.getElementById('overlay2d'), view, autoCam);
 
   // Warm up so the map isn't empty when it first appears.
   for (let i = 0; i < 30 * 45; i++) world.step(CONFIG.sim.dt);
+
+  // Switch the junction under test between crossing and roundabout, live.
+  const junctionBtn = createJunctionToggle(document.getElementById('btn-junction'), view, net.junctions[TOGGLE_JUNCTION].c,
+    () => setLayout(world.layout === 'cross' ? 'roundabout' : 'cross'));
+  function setLayout(name) {
+    if (name === world.layout) return;
+    world.setNetwork(nets[name], name);
+    for (const k of Object.keys(nets)) roadsBy[k].group.visible = roadsBy[k].furniture.visible = debugBy[k].visible = false;
+    roads = roadsBy[name]; debug = debugBy[name];
+    roads.group.visible = roads.furniture.visible = true;
+    debug.visible = ui.state.debug;
+    routeOverlay.reset();
+    junctionBtn.set(name);
+  }
 
   let nightK = 0, nightTarget = 0;
   const ui = createControls({
@@ -48,6 +68,7 @@ async function main() {
       if (kind === 'hover') view.setHover(value);
       if (kind === 'auto') autoCam.setEnabled(value);
       if (kind === 'autoSpeed') autoCam.setSpeed(value);
+      if (kind === 'junction') setLayout(world.layout === 'cross' ? 'roundabout' : 'cross');
     },
   });
 
@@ -76,12 +97,14 @@ async function main() {
     routeOverlay.update(now / 1000);
     pathPreview.update(now / 1000);
     if (autoCam.enabled) autoCam.update(dtReal); else view.controls.update();
+    junctionBtn.update();
     ui.update(now);
     view.render();
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  window.kastenhof = { net, world, view, autoCam }; // handy for tuning from the console
+  // Handy for tuning from the console. `net` follows the active layout.
+  window.kastenhof = { nets, world, view, autoCam, setLayout, get net() { return world.net; }, get layout() { return world.layout; } };
 }
 
 // Debug overlay: lane centrelines by type, stop lines and conflict points.

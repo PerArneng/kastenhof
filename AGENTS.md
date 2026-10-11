@@ -5,7 +5,15 @@ See README.md for how to run it, the controls and where to tune things. The note
 ## Traffic
 - Traffic is defined only by `CONFIG.routes` in `js/config.js` (entry, exit, cars per minute). Every car runs Dijkstra from entry to exit, with a little per-driver noise (`js/sim/routing.js`).
 - To add a route, use the `add-route` skill (`.claude/skills/add-route`). Its `scripts/check-route.mjs` shows which road sequence drivers actually take.
-- `node test/selftest.mjs 20 1` must print `SELFTEST OK` after any change to the network or the simulation.
+- `node test/selftest.mjs 20 1` must print `SELFTEST OK` after any change to the network or the simulation. Run it with `roundabout` and `toggle` as a third argument too.
+
+## Crossing / roundabout toggle
+- Testing a roundabout at J_CW (Dageborgsleden / westbound ramps) is the purpose of the simulation. `LAYOUTS` in `js/network/roads.js` holds both network definitions, and `main.js` builds both networks, road meshes and debug overlays at startup, then shows one.
+- `World.setNetwork(net, layout)` swaps the network under live traffic. Each car moves to the nearest new lane heading the same way (3.5 m first, then 20 m near the changed junction) and is re-routed. Cars with no route, or on top of another car, are dropped (`stats.dropped`).
+- Anything holding a network must follow `world.net` rather than keep the startup one: the vehicle renderer, the route overlay (getters plus `reset()`), and `window.kastenhof.net`.
+- Terrain gets every layout's paths, so trees and verges are cleared for both.
+- Cars that drove through J_CW carry `v.via`. `world.recentAvg()` and the HUD/graph (`js/ui/travelGraph.js`) measure only those trips; E20 through traffic would drown out the difference.
+- The floating button (`js/ui/junctionToggle.js`) is a DOM element projected from 3D each frame, placed above the junction, away from E20.
 
 ## Rendering
 - The canvas `antialias` flag does nothing, because everything is drawn through the EffectComposer (bloom). The composer gets its own 4× MSAA render target in `js/render/scene.js`. Without it, the thin lane markings shimmer as the camera moves.
